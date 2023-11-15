@@ -84,37 +84,7 @@ struct node
 	} data;
 };
 
-// start_function -> return_type function_name params...
-	// expression
-	// start_condition -> expression
-		// expression
-	// end_condition
-	// return
-// end_function
-
-struct parse_callbacks
-{
-	void (*start_program)();
-	void (*end_program)();
-
-	void (*start_file)();
-	void (*end_file)();
-
-	void (*start_expression)();
-	void (*end_expression)();
-	
-	void (*math_operation)();
-
-	void (*start_condition)();
-	void (*end_condition)();
-	
-	void (*start_function)();
-	void (*end_function)();
-};
-
-parse_callbacks new_callbacks( void );
-
 // TODO DOC
-bool parse(int max_tokens, const token *tokens, parse_callbacks cb, bool debug_text);
+int parse(int max_tokens, const token *tokens, int max_nodes, node *nodes, bool debug_text);
 
 #endif
