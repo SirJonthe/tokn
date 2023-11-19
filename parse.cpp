@@ -178,7 +178,7 @@ static int scan_scope(unsigned open, int (*parse_fn)(parser*,unsigned), unsigned
 static int parse_empty(parser *p, unsigned end)
 {
 	return MANAGE_STATE(
-		"parse_empty",
+		"empty",
 		peek(p, end)
 	);
 }
@@ -187,7 +187,7 @@ static int parse_empty(parser *p, unsigned end)
 static int parse_program(parser *p, unsigned end)
 {
 	return MANAGE_STATE(
-		"parse_program",
+		"program",
 		parse_def_func_stmt(p, end)
 	);
 }
@@ -196,7 +196,7 @@ static int parse_program(parser *p, unsigned end)
 static int parse_body(parser *p, unsigned end)
 {
 	return MANAGE_STATE(
-		"parse_body",
+		"body",
 		scan_scope(ctoken::OPERATOR_ENCLOSE_BRACE_L, parse_stmt_list, ctoken::OPERATOR_ENCLOSE_BRACE_R, p)
 	);
 }
@@ -205,7 +205,7 @@ static int parse_body(parser *p, unsigned end)
 static int parse_stmt_list(parser *p, unsigned end)
 {
 	return MANAGE_STATE(
-		"parse_stmt_list",
+		"stmt_list",
 		(parse_stmt(p, end) && parse_stmt_list(p, end))
 		|| parse_empty(p, end)
 	);
@@ -215,7 +215,7 @@ static int parse_stmt_list(parser *p, unsigned end)
 static int parse_stmt(parser *p, unsigned end)
 {
 	return MANAGE_STATE(
-		"parse_stmt",
+		"stmt",
 		parse_body(p, end)
 		|| parse_decl_var_stmt(p, end)
 		|| parse_assign_stmt(p, end)
@@ -229,7 +229,7 @@ static int parse_stmt(parser *p, unsigned end)
 static int parse_typename(parser *p, unsigned end)
 {
 	return MANAGE_STATE(
-		"parse_typename",
+		"typename",
 		match(p, ctoken::KEYWORD_TYPE_INT)
 		|| match(p, ctoken::KEYWORD_TYPE_FLOAT)
 	);
@@ -239,7 +239,7 @@ static int parse_typename(parser *p, unsigned end)
 static int parse_var_sig(parser *p, unsigned end)
 {
 	return MANAGE_STATE(
-		"parse_var_sig",
+		"var_sig",
 		parse_typename(p, end) && match(p, token::ALIAS)
 	);
 }
@@ -248,11 +248,11 @@ static int parse_var_sig(parser *p, unsigned end)
 static int parse_var_sig_list(parser *p, unsigned end)
 {
 	return MANAGE_STATE(
-		"parse_var_sig_list",
+		"var_sig_list",
 		(parse_var_sig(p, end) && match(p, ctoken::OPERATOR_COMMA) && parse_var_sig_list(p, end))
 	)
 	|| MANAGE_STATE(
-		"parse_var_sig_list",
+		"var_sig_list",
 		parse_var_sig(p, end)
 		|| parse_empty(p, end)
 	);
@@ -262,7 +262,7 @@ static int parse_var_sig_list(parser *p, unsigned end)
 static int parse_decl_var_stmt(parser *p, unsigned end)
 {
 	return MANAGE_STATE(
-		"parse_decl_var_stmt",
+		"decl_var_stmt",
 		parse_var_sig(p, end) && match(p, ctoken::OPERATOR_SEMICOLON)
 	);
 }
@@ -272,11 +272,11 @@ static int parse_param_list(parser *p, unsigned end)
 {
 	return
 		MANAGE_STATE(
-			"parse_param_list",
+			"param_list",
 			parse_var_sig(p, end) && match(p, ctoken::OPERATOR_COMMA) && parse_param_list(p, end)
 		)
 		|| MANAGE_STATE(
-			"parse_param_list",
+			"param_list",
 			parse_var_sig(p, end)
 			|| parse_empty(p, end)
 		);
@@ -286,7 +286,7 @@ static int parse_param_list(parser *p, unsigned end)
 static int parse_func_sig(parser *p, unsigned end)
 {
 	return MANAGE_STATE(
-		"parse_func_sig",
+		"func_sig",
 		parse_var_sig(p, end) && scan_scope(ctoken::OPERATOR_ENCLOSE_PARENTHESIS_L, parse_param_list, ctoken::OPERATOR_ENCLOSE_PARENTHESIS_R, p)
 	);
 }
@@ -295,7 +295,7 @@ static int parse_func_sig(parser *p, unsigned end)
 static int parse_def_func_stmt(parser *p, unsigned end)
 {
 	return MANAGE_STATE(
-		"parse_def_func_stmt",
+		"def_func_stmt",
 		parse_func_sig(p, end) && parse_body(p, end)
 	);
 }
@@ -304,7 +304,7 @@ static int parse_def_func_stmt(parser *p, unsigned end)
 static int parse_assign_op(parser *p, unsigned end)
 {
 	return MANAGE_STATE(
-		"parse_assign_op",
+		"assign_op",
 		match(p, ctoken::OPERATOR_ASSIGNMENT_SET)
 	);
 }
@@ -313,7 +313,7 @@ static int parse_assign_op(parser *p, unsigned end)
 static int parse_assign_stmt(parser *p, unsigned end)
 {
 	return MANAGE_STATE(
-		"parse_assign_stmt",
+		"assign_stmt",
 		match(p, token::ALIAS) && parse_assign_op(p, end) && parse_expr(p, end) && match(p, ctoken::OPERATOR_SEMICOLON)
 	);
 }
@@ -322,7 +322,7 @@ static int parse_assign_stmt(parser *p, unsigned end)
 static int parse_if_stmt(parser *p, unsigned end)
 {
 	return MANAGE_STATE(
-		"parse_if_stmt",
+		"if_stmt",
 		match(p, ctoken::KEYWORD_CONTROL_IF) && match(p, ctoken::OPERATOR_ENCLOSE_PARENTHESIS_L) && parse_expr(p, end) && match(p, ctoken::OPERATOR_ENCLOSE_PARENTHESIS_R) && parse_stmt(p, end)
 	);
 }
@@ -331,7 +331,7 @@ static int parse_if_stmt(parser *p, unsigned end)
 static int parse_return_stmt(parser *p, unsigned end)
 {
 	return MANAGE_STATE(
-		"parse_return_stmt",
+		"return_stmt",
 		match(p, ctoken::KEYWORD_CONTROL_RETURN) && (parse_expr_stmt(p, end) || match(p, ctoken::OPERATOR_SEMICOLON))
 	);
 }
@@ -340,7 +340,7 @@ static int parse_return_stmt(parser *p, unsigned end)
 static int parse_expr_stmt(parser *p, unsigned end)
 {
 	return MANAGE_STATE(
-		"parse_expr_stmt",
+		"expr_stmt",
 		parse_expr(p, end) && match(p, ctoken::OPERATOR_SEMICOLON)
 	);
 }
@@ -350,11 +350,11 @@ static int parse_expr_list(parser *p, unsigned end)
 {
 	return
 		MANAGE_STATE(
-			"parse_expr_list",
+			"expr_list",
 			parse_expr(p, end) && parse_empty(p, end)
 		)
 		|| MANAGE_STATE(
-			"parse_expr_list",
+			"expr_list",
 			parse_expr(p, end) && match(p, ctoken::OPERATOR_COMMA) && parse_expr_list(p, end)
 		);
 }
@@ -364,7 +364,7 @@ static int parse_expr(parser *p, unsigned end)
 {
 	return
 		MANAGE_STATE(
-			"parse_expr",
+			"expr",
 			parse_term(p, end) && parse_opt_term(p, end)
 		);
 }
@@ -374,7 +374,7 @@ static int parse_term(parser *p, unsigned end)
 {
 	return
 		MANAGE_STATE(
-			"parse_term",
+			"term",
 			parse_factor(p, end) && parse_opt_factor(p, end)
 		);
 }
@@ -383,7 +383,7 @@ static int parse_term(parser *p, unsigned end)
 static int parse_opt_term(parser *p, unsigned end)
 {
 	while (match(p, ctoken::OPERATOR_ARITHMETIC_ADD) || match(p, ctoken::OPERATOR_ARITHMETIC_SUB)) {
-		if (!MANAGE_STATE("parse_opt_term", parse_term(p, end))) {
+		if (!MANAGE_STATE("opt_term", parse_term(p, end))) {
 			return 0;
 		}
 	}
@@ -394,7 +394,7 @@ static int parse_opt_term(parser *p, unsigned end)
 static int parse_factor(parser *p, unsigned end)
 {
 	return MANAGE_STATE(
-		"parse_factor",
+		"factor",
 		parse_func_call(p, end)
 		|| match(p, token::ALIAS)
 		|| match(p, ctoken::LITERAL_INT)
@@ -406,7 +406,7 @@ static int parse_factor(parser *p, unsigned end)
 static int parse_opt_factor(parser *p, unsigned end)
 {
 	while (match(p, ctoken::OPERATOR_ARITHMETIC_MUL) || match(p, ctoken::OPERATOR_ARITHMETIC_DIV) || match(p, ctoken::OPERATOR_ARITHMETIC_MOD)) {
-		if (!MANAGE_STATE("parse_opt_term", parse_factor(p, end))) {
+		if (!MANAGE_STATE("opt_term", parse_factor(p, end))) {
 			return 0;
 		}
 	}
@@ -417,7 +417,7 @@ static int parse_opt_factor(parser *p, unsigned end)
 static int parse_func_call(parser *p, unsigned end)
 {
 	return MANAGE_STATE(
-		"parse_func_call",
+		"func_call",
 		match(p, token::ALIAS) && scan_scope(ctoken::OPERATOR_ENCLOSE_PARENTHESIS_L, parse_expr_list, ctoken::OPERATOR_ENCLOSE_PARENTHESIS_R, p)
 	);
 }
