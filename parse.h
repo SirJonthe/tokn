@@ -85,8 +85,7 @@ struct node
 /// @param tokens The token stream.
 /// @param max_nodes The maximum number of nodes in the output abstract syntax tree.
 /// @param nodes The nodes that make up the abstract syntax tree. The first node (index=0) is always the root node.
-/// @param debug_text Prints debug text when true.
 /// @return The number of nodes that has been output to the nodes field. Errors resulting in an untraversable node tree yeilds negative numbers in the return value.
-int parsec(int max_tokens, const token *tokens, int max_nodes, node *nodes, bool debug_text);
+int parsec(int max_tokens, const token *tokens, int max_nodes, node *nodes);
 
 #endif

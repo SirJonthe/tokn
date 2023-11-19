@@ -4,8 +4,6 @@
 
 struct token_stream
 {
-	int          index_states[256];
-	int          current_state;
 	const token *tokens;
 	int          index;
 	int          max_tokens;
@@ -13,8 +11,6 @@ struct token_stream
 
 struct node_tree
 {
-	int   index_states[256];
-	int   current_state;
 	node *nodes;
 	int   index;
 	int   max_nodes;
@@ -24,133 +20,59 @@ struct parser
 {
 	token_stream in;
 	node_tree    out;
-	bool         debug_text;
 };
-
-static bool debug_print(parser *p, const char *text)
-{
-	if (p->debug_text) {
-		for (int i = 0; i < p->in.current_state; ++i) {
-			std::cout << " |";
-		}
-		std::cout << text << std::endl;
-	}
-	return true;
-}
-
-static bool debug_print_fn(parser *p, const char *fn_name, const char *msg)
-{
-	if (p->debug_text) {
-		for (int i = 0; i < p->in.current_state; ++i) {
-			std::cout << " |";
-		}
-		std::cout << fn_name << ": " << msg << std::endl;
-	}
-	return true;
-}
-
-static bool debug_match_print(parser *p, unsigned expected, unsigned got, const char *chars, const char *msg)
-{
-	if (p->debug_text) {
-		for (int i = 0; i < p->in.current_state; ++i) {
-			std::cout << " |";
-		}
-		std::cout << "expect=" << expected << ", got=" << got << "(" << chars << "): " << msg << std::endl;
-	}
-	return true;
-}
 
 #define DEBUG_PRINT(text) debug_print(p, text)
 
-static bool save_state(parser *p)
+static void restore_state(parser *p, int prev_token_index, int prev_node_index)
 {
-	if (p->in.current_state >= 255) { return false; }
-	p->in.index_states[p->in.current_state] = p->in.index;
-	++p->in.current_state;
-
-	if (p->out.current_state >= 255) { return false; }
-	p->out.index_states[p->out.current_state] = p->out.index;
-	++p->out.current_state;
-
-	return true;
+	p->in.index = prev_token_index;
+	p->out.index = prev_node_index;
 }
 
-static void restore_state(parser *p)
+static int manage_state(const char *fn_name, parser *p, int prev_token_index, int prev_node_index, int success)
 {
-	if (p->in.current_state <= 0) { return; }
-	--p->in.current_state;
-	p->in.index = p->in.index_states[p->in.current_state];
-
-	if (p->out.current_state <= 0) { return; }
-	--p->out.current_state;
-	p->out.index = p->out.index_states[p->out.current_state];
-}
-
-static void commit_state(parser *p)
-{
-	if (p->in.current_state <= 0) { return; }
-	
-	//for (int i = 0; i < p->in.current_state; ++i) {
-	//	std::cout << "  ";
-	//}
-	//for (int i = p->in.index_states[p->in.current_state - 1]; i < p->in.index; ++i) {
-	//	std::cout << p->in.tokens[i].chars << "|";
-	//}
-	//std::cout << std::endl;
-
-	--p->in.current_state;
-	--p->out.current_state;
-}
-
-static bool manage_state(const char *fn_name, parser *p, bool success)
-{
-	if (success) {
-		commit_state(p);
-		debug_print_fn(p, fn_name, "match");
-	} else {
-		restore_state(p);
-		debug_print_fn(p, fn_name, "no match");
+	if (!success) {
+		restore_state(p, prev_token_index, prev_node_index);
 	}
 	return success;
 }
 
-#define MANAGE_STATE(fn_name, success) (debug_print(p, fn_name) && save_state(p) && manage_state(fn_name, p, success))
+#define MANAGE_STATE(fn_name, success) (manage_state(fn_name, p, prev_token_index, prev_node_index, success))
 
-static int parse_empty        (parser *p, unsigned end);
-static int parse_program      (parser *p, unsigned end);
-static int parse_body         (parser *p, unsigned end);
-static int parse_stmt_list    (parser *p, unsigned end);
-static int parse_stmt         (parser *p, unsigned end);
-static int parse_typename     (parser *p, unsigned end);
-static int parse_var_sig      (parser *p, unsigned end);
-static int parse_var_sig_list (parser *p, unsigned end);
-static int parse_decl_var_stmt(parser *p, unsigned end);
-static int parse_param_list   (parser *p, unsigned end);
-static int parse_func_sig     (parser *p, unsigned end);
-static int parse_def_func_stmt(parser *p, unsigned end);
-static int parse_assign_op    (parser *p, unsigned end);
-static int parse_assign_stmt  (parser *p, unsigned end);
-static int parse_if_stmt      (parser *p, unsigned end);
-static int parse_return_stmt  (parser *p, unsigned end);
-static int parse_expr_stmt    (parser *p, unsigned end);
-static int parse_expr_list    (parser *p, unsigned end);
-static int parse_expr         (parser *p, unsigned end);
-static int parse_term         (parser *p, unsigned end);
-static int parse_opt_term     (parser *p, unsigned end);
-static int parse_func_call    (parser *p, unsigned end);
-static int parse_factor       (parser *p, unsigned end);
-static int parse_opt_factor   (parser *p, unsigned end);
+static int parse_empty        (parser *p, int prev_token_index, int prev_node_index, unsigned end);
+static int parse_program      (parser *p, int prev_token_index, int prev_node_index, unsigned end);
+static int parse_body         (parser *p, int prev_token_index, int prev_node_index, unsigned end);
+static int parse_stmt_list    (parser *p, int prev_token_index, int prev_node_index, unsigned end);
+static int parse_stmt         (parser *p, int prev_token_index, int prev_node_index, unsigned end);
+static int parse_typename     (parser *p, int prev_token_index, int prev_node_index, unsigned end);
+static int parse_var_sig      (parser *p, int prev_token_index, int prev_node_index, unsigned end);
+static int parse_var_sig_list (parser *p, int prev_token_index, int prev_node_index, unsigned end);
+static int parse_decl_var_stmt(parser *p, int prev_token_index, int prev_node_index, unsigned end);
+static int parse_param_list   (parser *p, int prev_token_index, int prev_node_index, unsigned end);
+static int parse_func_sig     (parser *p, int prev_token_index, int prev_node_index, unsigned end);
+static int parse_def_func_stmt(parser *p, int prev_token_index, int prev_node_index, unsigned end);
+static int parse_assign_op    (parser *p, int prev_token_index, int prev_node_index, unsigned end);
+static int parse_assign_stmt  (parser *p, int prev_token_index, int prev_node_index, unsigned end);
+static int parse_if_stmt      (parser *p, int prev_token_index, int prev_node_index, unsigned end);
+static int parse_return_stmt  (parser *p, int prev_token_index, int prev_node_index, unsigned end);
+static int parse_expr_stmt    (parser *p, int prev_token_index, int prev_node_index, unsigned end);
+static int parse_expr_list    (parser *p, int prev_token_index, int prev_node_index, unsigned end);
+static int parse_expr         (parser *p, int prev_token_index, int prev_node_index, unsigned end);
+static int parse_term         (parser *p, int prev_token_index, int prev_node_index, unsigned end);
+static int parse_opt_term     (parser *p, int prev_token_index, int prev_node_index, unsigned end);
+static int parse_func_call    (parser *p, int prev_token_index, int prev_node_index, unsigned end);
+static int parse_factor       (parser *p, int prev_token_index, int prev_node_index, unsigned end);
+static int parse_opt_factor   (parser *p, int prev_token_index, int prev_node_index, unsigned end);
 
 static bool match(parser *p, unsigned type)
 {
 	if (p->in.index >= p->in.max_tokens) { return false; }
 	unsigned t = p->in.tokens[p->in.index].user_type;
 	if (p->in.tokens[p->in.index].type != token::STOP && type == t) {
-		debug_match_print(p, type, t, p->in.tokens[p->in.index].chars, "match");
 		++p->in.index;
 		return true;
 	}
-	debug_match_print(p, type, t, p->in.tokens[p->in.index].chars, "no match");
 	return false;
 }
 
@@ -159,15 +81,13 @@ static bool peek(parser *p, unsigned type)
 	return p->in.tokens[p->in.index].user_type == type;
 }
 
-static int scan_scope(unsigned open, int (*parse_fn)(parser*,unsigned), unsigned close, parser *p)
+static int scan_scope(unsigned open, int (*parse_fn)(parser*,int,int,unsigned), unsigned close, parser *p, int prev_token_index, int prev_node_index)
 {
-	DEBUG_PRINT("scan_scope");
-
 	if (!match(p, open)) {
 		return 0;
 	}
 	while (!match(p, close)) {
-		if (!parse_fn(p, close)) {
+		if (MANAGE_STATE("scan_scope", parse_fn(p, p->in.index, p->out.index, close)) <= 0) {
 			return 0;
 		}
 	}
@@ -175,7 +95,7 @@ static int scan_scope(unsigned open, int (*parse_fn)(parser*,unsigned), unsigned
 }
 
 // ε
-static int parse_empty(parser *p, unsigned end)
+static int parse_empty(parser *p, int prev_token_index, int prev_node_index, unsigned end)
 {
 	return MANAGE_STATE(
 		"empty",
@@ -184,49 +104,49 @@ static int parse_empty(parser *p, unsigned end)
 }
 
 // program ::= def_func_stmt
-static int parse_program(parser *p, unsigned end)
+static int parse_program(parser *p, int prev_token_index, int prev_node_index, unsigned end)
 {
 	return MANAGE_STATE(
 		"program",
-		parse_def_func_stmt(p, end)
+		parse_def_func_stmt(p, p->in.index, p->out.index, end)
 	);
 }
 
 // body ::= "{" stmt_list "}"
-static int parse_body(parser *p, unsigned end)
+static int parse_body(parser *p, int prev_token_index, int prev_node_index, unsigned end)
 {
 	return MANAGE_STATE(
 		"body",
-		scan_scope(ctoken::OPERATOR_ENCLOSE_BRACE_L, parse_stmt_list, ctoken::OPERATOR_ENCLOSE_BRACE_R, p)
+		scan_scope(ctoken::OPERATOR_ENCLOSE_BRACE_L, parse_stmt_list, ctoken::OPERATOR_ENCLOSE_BRACE_R, p, p->in.index, p->out.index)
 	);
 }
 
 // stmt_list ::= stmt stmt_list | ε
-static int parse_stmt_list(parser *p, unsigned end)
+static int parse_stmt_list(parser *p, int prev_token_index, int prev_node_index, unsigned end)
 {
 	return MANAGE_STATE(
 		"stmt_list",
-		(parse_stmt(p, end) && parse_stmt_list(p, end))
-		|| parse_empty(p, end)
+		(parse_stmt(p, p->in.index, p->out.index, end) && parse_stmt_list(p, p->in.index, p->out.index, end))
+		|| parse_empty(p, p->in.index, p->out.index, end)
 	);
 }
 
 // stmt ::= decl_var_stmt | assign_stmt | return_stmt | if_stmt | expr_stmt
-static int parse_stmt(parser *p, unsigned end)
+static int parse_stmt(parser *p, int prev_token_index, int prev_node_index, unsigned end)
 {
 	return MANAGE_STATE(
 		"stmt",
-		parse_body(p, end)
-		|| parse_decl_var_stmt(p, end)
-		|| parse_assign_stmt(p, end)
-		|| parse_return_stmt(p, end)
-		|| parse_if_stmt(p, end)
-		|| parse_expr_stmt(p, end)
+		parse_body(p, p->in.index, p->out.index, end)
+		|| parse_decl_var_stmt(p, p->in.index, p->out.index, end)
+		|| parse_assign_stmt(p, p->in.index, p->out.index, end)
+		|| parse_return_stmt(p, p->in.index, p->out.index, end)
+		|| parse_if_stmt(p, p->in.index, p->out.index, end)
+		|| parse_expr_stmt(p, p->in.index, p->out.index, end)
 	);
 }
 
 // typename ::= "int" | "float"
-static int parse_typename(parser *p, unsigned end)
+static int parse_typename(parser *p, int prev_token_index, int prev_node_index, unsigned end)
 {
 	return MANAGE_STATE(
 		"typename",
@@ -236,72 +156,72 @@ static int parse_typename(parser *p, unsigned end)
 }
 
 // var_sig ::= typename IDENTIFIER
-static int parse_var_sig(parser *p, unsigned end)
+static int parse_var_sig(parser *p, int prev_token_index, int prev_node_index, unsigned end)
 {
 	return MANAGE_STATE(
 		"var_sig",
-		parse_typename(p, end) && match(p, token::ALIAS)
+		parse_typename(p, p->in.index, p->out.index, end) && match(p, token::ALIAS)
 	);
 }
 
 // var_sig_list ::= var_sig "," var_sig_list | var_sig | ε
-static int parse_var_sig_list(parser *p, unsigned end)
+static int parse_var_sig_list(parser *p, int prev_token_index, int prev_node_index, unsigned end)
 {
 	return MANAGE_STATE(
 		"var_sig_list",
-		(parse_var_sig(p, end) && match(p, ctoken::OPERATOR_COMMA) && parse_var_sig_list(p, end))
+		(parse_var_sig(p, p->in.index, p->out.index, end) && match(p, ctoken::OPERATOR_COMMA) && parse_var_sig_list(p, p->in.index, p->out.index, end))
 	)
 	|| MANAGE_STATE(
 		"var_sig_list",
-		parse_var_sig(p, end)
-		|| parse_empty(p, end)
+		parse_var_sig(p, p->in.index, p->out.index, end)
+		|| parse_empty(p, p->in.index, p->out.index, end)
 	);
 }
 
 // decl_var_stmt ::= var_sig ";"
-static int parse_decl_var_stmt(parser *p, unsigned end)
+static int parse_decl_var_stmt(parser *p, int prev_token_index, int prev_node_index, unsigned end)
 {
 	return MANAGE_STATE(
 		"decl_var_stmt",
-		parse_var_sig(p, end) && match(p, ctoken::OPERATOR_SEMICOLON)
+		parse_var_sig(p, p->in.index, p->out.index, end) && match(p, ctoken::OPERATOR_SEMICOLON)
 	);
 }
 
 // param_list ::= var_sig "," param_list | var_sig | ε
-static int parse_param_list(parser *p, unsigned end)
+static int parse_param_list(parser *p, int prev_token_index, int prev_node_index, unsigned end)
 {
 	return
 		MANAGE_STATE(
 			"param_list",
-			parse_var_sig(p, end) && match(p, ctoken::OPERATOR_COMMA) && parse_param_list(p, end)
+			parse_var_sig(p, p->in.index, p->out.index, end) && match(p, ctoken::OPERATOR_COMMA) && parse_param_list(p, p->in.index, p->out.index, end)
 		)
 		|| MANAGE_STATE(
 			"param_list",
-			parse_var_sig(p, end)
-			|| parse_empty(p, end)
+			parse_var_sig(p, p->in.index, p->out.index, end)
+			|| parse_empty(p, p->in.index, p->out.index, end)
 		);
 }
 
 // func_sig ::= var_sig "(" param_list ")"
-static int parse_func_sig(parser *p, unsigned end)
+static int parse_func_sig(parser *p, int prev_token_index, int prev_node_index, unsigned end)
 {
 	return MANAGE_STATE(
 		"func_sig",
-		parse_var_sig(p, end) && scan_scope(ctoken::OPERATOR_ENCLOSE_PARENTHESIS_L, parse_param_list, ctoken::OPERATOR_ENCLOSE_PARENTHESIS_R, p)
+		parse_var_sig(p, p->in.index, p->out.index, end) && scan_scope(ctoken::OPERATOR_ENCLOSE_PARENTHESIS_L, parse_param_list, ctoken::OPERATOR_ENCLOSE_PARENTHESIS_R, p, p->in.index, p->out.index)
 	);
 }
 
 // def_func_stmt ::= func_sig body
-static int parse_def_func_stmt(parser *p, unsigned end)
+static int parse_def_func_stmt(parser *p, int prev_token_index, int prev_node_index, unsigned end)
 {
 	return MANAGE_STATE(
 		"def_func_stmt",
-		parse_func_sig(p, end) && parse_body(p, end)
+		parse_func_sig(p, p->in.index, p->out.index, end) && parse_body(p, p->in.index, p->out.index, end)
 	);
 }
 
 // assign_op ::= "="
-static int parse_assign_op(parser *p, unsigned end)
+static int parse_assign_op(parser *p, int prev_token_index, int prev_node_index, unsigned end)
 {
 	return MANAGE_STATE(
 		"assign_op",
@@ -310,80 +230,80 @@ static int parse_assign_op(parser *p, unsigned end)
 }
 
 // assign_stmt ::= IDENTIFIER "=" expr ";"
-static int parse_assign_stmt(parser *p, unsigned end)
+static int parse_assign_stmt(parser *p, int prev_token_index, int prev_node_index, unsigned end)
 {
 	return MANAGE_STATE(
 		"assign_stmt",
-		match(p, token::ALIAS) && parse_assign_op(p, end) && parse_expr(p, end) && match(p, ctoken::OPERATOR_SEMICOLON)
+		match(p, token::ALIAS) && parse_assign_op(p, p->in.index, p->out.index, end) && parse_expr(p, p->in.index, p->out.index, end) && match(p, ctoken::OPERATOR_SEMICOLON)
 	);
 }
 
 // if_stmt ::= "if" "(" expr ")" stmt
-static int parse_if_stmt(parser *p, unsigned end)
+static int parse_if_stmt(parser *p, int prev_token_index, int prev_node_index, unsigned end)
 {
 	return MANAGE_STATE(
 		"if_stmt",
-		match(p, ctoken::KEYWORD_CONTROL_IF) && match(p, ctoken::OPERATOR_ENCLOSE_PARENTHESIS_L) && parse_expr(p, end) && match(p, ctoken::OPERATOR_ENCLOSE_PARENTHESIS_R) && parse_stmt(p, end)
+		match(p, ctoken::KEYWORD_CONTROL_IF) && match(p, ctoken::OPERATOR_ENCLOSE_PARENTHESIS_L) && parse_expr(p, p->in.index, p->out.index, end) && match(p, ctoken::OPERATOR_ENCLOSE_PARENTHESIS_R) && parse_stmt(p, p->in.index, p->out.index, end)
 	);
 }
 
 // return_stmt ::= "return" expr_stmt | "return" ";"
-static int parse_return_stmt(parser *p, unsigned end)
+static int parse_return_stmt(parser *p, int prev_token_index, int prev_node_index, unsigned end)
 {
 	return MANAGE_STATE(
 		"return_stmt",
-		match(p, ctoken::KEYWORD_CONTROL_RETURN) && (parse_expr_stmt(p, end) || match(p, ctoken::OPERATOR_SEMICOLON))
+		match(p, ctoken::KEYWORD_CONTROL_RETURN) && (parse_expr_stmt(p, p->in.index, p->out.index, end) || match(p, ctoken::OPERATOR_SEMICOLON))
 	);
 }
 
 // expr_stmt ::= expr ";"
-static int parse_expr_stmt(parser *p, unsigned end)
+static int parse_expr_stmt(parser *p, int prev_token_index, int prev_node_index, unsigned end)
 {
 	return MANAGE_STATE(
 		"expr_stmt",
-		parse_expr(p, end) && match(p, ctoken::OPERATOR_SEMICOLON)
+		parse_expr(p, p->in.index, p->out.index, end) && match(p, ctoken::OPERATOR_SEMICOLON)
 	);
 }
 
 // expr_list ::= expr "," expr_list | expr | ε
-static int parse_expr_list(parser *p, unsigned end)
+static int parse_expr_list(parser *p, int prev_token_index, int prev_node_index, unsigned end)
 {
 	return
 		MANAGE_STATE(
 			"expr_list",
-			parse_expr(p, end) && parse_empty(p, end)
+			parse_expr(p, p->in.index, p->out.index, end) && parse_empty(p, p->in.index, p->out.index, end)
 		)
 		|| MANAGE_STATE(
 			"expr_list",
-			parse_expr(p, end) && match(p, ctoken::OPERATOR_COMMA) && parse_expr_list(p, end)
+			parse_expr(p, p->in.index, p->out.index, end) && match(p, ctoken::OPERATOR_COMMA) && parse_expr_list(p, p->in.index, p->out.index, end)
 		);
 }
 
 // expr ::= term opt_term
-static int parse_expr(parser *p, unsigned end)
+static int parse_expr(parser *p, int prev_token_index, int prev_node_index, unsigned end)
 {
 	return
 		MANAGE_STATE(
 			"expr",
-			parse_term(p, end) && parse_opt_term(p, end)
+			parse_term(p, p->in.index, p->out.index, end) && parse_opt_term(p, p->in.index, p->out.index, end)
 		);
 }
 
 // term ::= factor opt_factor
-static int parse_term(parser *p, unsigned end)
+static int parse_term(parser *p, int prev_token_index, int prev_node_index, unsigned end)
 {
 	return
 		MANAGE_STATE(
 			"term",
-			parse_factor(p, end) && parse_opt_factor(p, end)
+			parse_factor(p, p->in.index, p->out.index, end) && parse_opt_factor(p, p->in.index, p->out.index, end)
 		);
 }
 
 // opt_term ::= (("+" | "-") term)*
-static int parse_opt_term(parser *p, unsigned end)
+static int parse_opt_term(parser *p, int prev_token_index, int prev_node_index, unsigned end)
 {
 	while (match(p, ctoken::OPERATOR_ARITHMETIC_ADD) || match(p, ctoken::OPERATOR_ARITHMETIC_SUB)) {
-		if (!MANAGE_STATE("opt_term", parse_term(p, end))) {
+		if (!MANAGE_STATE("opt_term", parse_term(p, p->in.index, p->out.index, end))) {
 			return 0;
 		}
 	}
@@ -391,22 +311,22 @@ static int parse_opt_term(parser *p, unsigned end)
 }
 
 // factor ::= func_call | IDENTIFIER | LITERAL | "(" expr ")"
-static int parse_factor(parser *p, unsigned end)
+static int parse_factor(parser *p, int prev_token_index, int prev_node_index, unsigned end)
 {
 	return MANAGE_STATE(
 		"factor",
-		parse_func_call(p, end)
+		parse_func_call(p, p->in.index, p->out.index, end)
 		|| match(p, token::ALIAS)
 		|| match(p, ctoken::LITERAL_INT)
-		|| scan_scope(ctoken::OPERATOR_ENCLOSE_PARENTHESIS_L, parse_expr, ctoken::OPERATOR_ENCLOSE_PARENTHESIS_R, p)
+		|| scan_scope(ctoken::OPERATOR_ENCLOSE_PARENTHESIS_L, parse_expr, ctoken::OPERATOR_ENCLOSE_PARENTHESIS_R, p, p->in.index, p->out.index)
 	);
 }
 
 // opt_factor ::= (("*" | "/" | "%") factor)*
-static int parse_opt_factor(parser *p, unsigned end)
+static int parse_opt_factor(parser *p, int prev_token_index, int prev_node_index, unsigned end)
 {
 	while (match(p, ctoken::OPERATOR_ARITHMETIC_MUL) || match(p, ctoken::OPERATOR_ARITHMETIC_DIV) || match(p, ctoken::OPERATOR_ARITHMETIC_MOD)) {
-		if (!MANAGE_STATE("opt_term", parse_factor(p, end))) {
+		if (!MANAGE_STATE("opt_term", parse_factor(p, p->in.index, p->out.index, end))) {
 			return 0;
 		}
 	}
@@ -414,30 +334,31 @@ static int parse_opt_factor(parser *p, unsigned end)
 }
 
 // func_call ::= IDENTIFIER "(" expr_list ")"
-static int parse_func_call(parser *p, unsigned end)
+static int parse_func_call(parser *p, int prev_token_index, int prev_node_index, unsigned end)
 {
 	return MANAGE_STATE(
 		"func_call",
-		match(p, token::ALIAS) && scan_scope(ctoken::OPERATOR_ENCLOSE_PARENTHESIS_L, parse_expr_list, ctoken::OPERATOR_ENCLOSE_PARENTHESIS_R, p)
+		match(p, token::ALIAS) && scan_scope(ctoken::OPERATOR_ENCLOSE_PARENTHESIS_L, parse_expr_list, ctoken::OPERATOR_ENCLOSE_PARENTHESIS_R, p, p->in.index, p->out.index)
 	);
 }
 
-int parsec(int max_tokens, const token *tokens, int max_nodes, node *nodes, bool debug_text)
+int parsec(int max_tokens, const token *tokens, int max_nodes, node *nodes)
 {
 	parser ps;
 	
-	ps.in.current_state = 0;
+	//ps.in.current_state = 0;
 	ps.in.tokens = tokens;
 	ps.in.index = 0;
 	ps.in.max_tokens = max_tokens;
 
-	ps.out.current_state = 0;
+	//ps.out.current_state = 0;
 	ps.out.nodes = nodes;
 	ps.out.index = 0;
 	ps.out.max_nodes = max_nodes;
 
-	ps.debug_text = debug_text;
-
 	parser *p = &ps;
-	return MANAGE_STATE("parse", parse_program(p, token::STOP_EOF));
+	int prev_token_index = 0;
+	int prev_node_index = 0;
+
+	return MANAGE_STATE("parse", parse_program(p, p->in.index, p->out.index, token::STOP_EOF)) <= 0 ? -1 : ps.out.index;
 }
