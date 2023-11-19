@@ -30,6 +30,14 @@ struct parser_state
 	unsigned  end;
 };
 
+node *new_node(signed *index, parser *p, unsigned type)
+{
+	*index = p->out.index;
+	node *n = p->out.nodes + p->out.index++;
+	n->type = type;
+	return n;
+}
+
 parser_state new_state(parser *p, unsigned end)
 {
 	parser_state s = { p, p->in.index, p->out.index, end };
@@ -74,9 +82,10 @@ static int parse_opt_factor   (parser_state ps);
 
 static bool match(parser *p, unsigned type)
 {
-	if (p->in.index >= p->in.max_tokens) { return false; }
-	unsigned t = p->in.tokens[p->in.index].user_type;
-	if (p->in.tokens[p->in.index].type != token::STOP && type == t) {
+	if (p->in.index >= p->in.max_tokens || p->in.tokens[p->in.index].type == token::STOP) {
+		return type == token::STOP_EOF;
+	}
+	if (type == p->in.tokens[p->in.index].user_type) {
 		++p->in.index;
 		return true;
 	}
@@ -94,7 +103,7 @@ static int scan_scope(unsigned open, int (*parse_fn)(parser_state), parser_state
 		return 0;
 	}
 	while (!match(ps.p, ps.end)) {
-		if (MANAGE_STATE("scan_scope", parse_fn(new_state(ps.p, ps.end))) <= 0) {
+		if (MANAGE_STATE("scan_scope", parse_fn(new_state(ps.p, ps.end))) == 0) {
 			return 0;
 		}
 	}
@@ -111,12 +120,14 @@ static int parse_empty(parser_state ps)
 }
 
 // program ::= def_func_stmt
-static int parse_program(parser_state ps)
+static int parse_program(parser_state ps)	
 {
-	return MANAGE_STATE(
-		"program",
-		parse_def_func_stmt(new_state(ps.p, ps.end))
-	);
+	while (match(ps.p, ps.end) == 0) {
+		if (MANAGE_STATE("program", parse_def_func_stmt(new_state(ps.p, ps.end))) == 0) {
+			return 0;
+		}
+	}
+	return 1;
 }
 
 // body ::= "{" stmt_list "}"
@@ -221,6 +232,7 @@ static int parse_func_sig(parser_state ps)
 // def_func_stmt ::= func_sig body
 static int parse_def_func_stmt(parser_state ps)
 {
+	//node *n = new_node()
 	return MANAGE_STATE(
 		"def_func_stmt",
 		parse_func_sig(new_state(ps.p, ps.end)) && parse_body(new_state(ps.p, ps.end))

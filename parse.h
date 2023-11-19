@@ -31,7 +31,9 @@ struct node
 		UNIT, // A translation unit. Every file starts with this and can be treated as a local root node. The root of the AST is also a UNIT type.
 		INSTANCE,
 		OPERATION,
-		OPERAND
+		OPERAND,
+		FN_DEF,
+		FN_DECL,
 		//CONDITIONAL,
 		//LOOP
 	};
@@ -68,6 +70,19 @@ struct node
 			signed on_true;
 			signed on_false; // This is empty if the condition does not have an else clause.
 		} conditional;
+
+		struct fn_def
+		{
+			signed out_type;
+			signed in_types;
+			signed body;
+		};
+
+		struct fn_decl
+		{
+			signed out_type;
+			signed in_types;
+		};
 
 		/// @brief Data relating to loops.
 		struct loop_data
