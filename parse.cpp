@@ -365,5 +365,5 @@ int parsec(int max_tokens, const token *tokens, int max_nodes, node *nodes)
 
 	parser_state ps = new_state(&p, token::STOP_EOF);
 
-	return MANAGE_STATE("parse", parse_program(new_state(ps.p, token::STOP_EOF))) <= 0 ? -1 : p.out.index;
+	return MANAGE_STATE("c", parse_program(new_state(ps.p, token::STOP_EOF))) <= 0 ? -1 : p.out.index;
 }
