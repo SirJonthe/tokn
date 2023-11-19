@@ -2,25 +2,35 @@
 
 #include <iostream>
 
+struct token_stream
+{
+	int          index_states[256];
+	int          current_state;
+	const token *tokens;
+	int          index;
+	int          max_tokens;
+};
+
+struct node_tree
+{
+	int   index_states[256];
+	int   current_state;
+	node *nodes;
+	int   index;
+	int   max_nodes;
+};
+
 struct parser
 {
-	int               token_index_states[256];
-	int               current_token_state;
-	const token      *tokens;
-	int               token_index;
-	int               max_tokens;
-	int               node_index_states[256];
-	int               current_node_state;
-	node             *nodes;
-	int               node_index;
-	int               max_nodes;
-	bool              debug_text;
+	token_stream in;
+	node_tree    out;
+	bool         debug_text;
 };
 
 static bool debug_print(parser *p, const char *text)
 {
 	if (p->debug_text) {
-		for (int i = 0; i < p->current_token_state; ++i) {
+		for (int i = 0; i < p->in.current_state; ++i) {
 			std::cout << " |";
 		}
 		std::cout << text << std::endl;
@@ -31,7 +41,7 @@ static bool debug_print(parser *p, const char *text)
 static bool debug_print_fn(parser *p, const char *fn_name, const char *msg)
 {
 	if (p->debug_text) {
-		for (int i = 0; i < p->current_token_state; ++i) {
+		for (int i = 0; i < p->in.current_state; ++i) {
 			std::cout << " |";
 		}
 		std::cout << fn_name << ": " << msg << std::endl;
@@ -42,7 +52,7 @@ static bool debug_print_fn(parser *p, const char *fn_name, const char *msg)
 static bool debug_match_print(parser *p, unsigned expected, unsigned got, const char *chars, const char *msg)
 {
 	if (p->debug_text) {
-		for (int i = 0; i < p->current_token_state; ++i) {
+		for (int i = 0; i < p->in.current_state; ++i) {
 			std::cout << " |";
 		}
 		std::cout << "expect=" << expected << ", got=" << got << "(" << chars << "): " << msg << std::endl;
@@ -54,40 +64,52 @@ static bool debug_match_print(parser *p, unsigned expected, unsigned got, const 
 
 static bool save_state(parser *p)
 {
-	if (p->current_token_state >= 255) { return false; }
-	p->token_index_states[p->current_token_state] = p->token_index;
-	++p->current_token_state;
+	if (p->in.current_state >= 255) { return false; }
+	p->in.index_states[p->in.current_state] = p->in.index;
+	++p->in.current_state;
+
+	if (p->out.current_state >= 255) { return false; }
+	p->out.index_states[p->out.current_state] = p->out.index;
+	++p->out.current_state;
+
 	return true;
 }
 
 static void restore_state(parser *p)
 {
-	if (p->current_token_state <= 0) { return; }
-	--p->current_token_state;
-	p->token_index = p->token_index_states[p->current_token_state];
+	if (p->in.current_state <= 0) { return; }
+	--p->in.current_state;
+	p->in.index = p->in.index_states[p->in.current_state];
+
+	if (p->out.current_state <= 0) { return; }
+	--p->out.current_state;
+	p->out.index = p->out.index_states[p->out.current_state];
 }
 
 static void commit_state(parser *p)
 {
-	if (p->current_token_state <= 0) { return; }
-	for (int i = 0; i < p->current_token_state; ++i) {
-		std::cout << "  ";
-	}
-	for (int i = p->token_index_states[p->current_token_state - 1]; i < p->token_index; ++i) {
-		std::cout << p->tokens[i].chars << "|";
-	}
-	std::cout << std::endl;
-	--p->current_token_state;
+	if (p->in.current_state <= 0) { return; }
+	
+	//for (int i = 0; i < p->in.current_state; ++i) {
+	//	std::cout << "  ";
+	//}
+	//for (int i = p->in.index_states[p->in.current_state - 1]; i < p->in.index; ++i) {
+	//	std::cout << p->in.tokens[i].chars << "|";
+	//}
+	//std::cout << std::endl;
+
+	--p->in.current_state;
+	--p->out.current_state;
 }
 
 static bool manage_state(const char *fn_name, parser *p, bool success)
 {
-	if (!success) {
-		restore_state(p);
-		debug_print_fn(p, fn_name, "no match");
-	} else {
+	if (success) {
 		commit_state(p);
 		debug_print_fn(p, fn_name, "match");
+	} else {
+		restore_state(p);
+		debug_print_fn(p, fn_name, "no match");
 	}
 	return success;
 }
@@ -121,20 +143,20 @@ static int parse_opt_factor   (parser *p, unsigned end);
 
 static bool match(parser *p, unsigned type)
 {
-	if (p->token_index >= p->max_tokens) { return false; }
-	unsigned t = p->tokens[p->token_index].user_type;
-	if (p->tokens[p->token_index].type != token::STOP && type == t) {
-		debug_match_print(p, type, t, p->tokens[p->token_index].chars, "match");
-		++p->token_index;
+	if (p->in.index >= p->in.max_tokens) { return false; }
+	unsigned t = p->in.tokens[p->in.index].user_type;
+	if (p->in.tokens[p->in.index].type != token::STOP && type == t) {
+		debug_match_print(p, type, t, p->in.tokens[p->in.index].chars, "match");
+		++p->in.index;
 		return true;
 	}
-	debug_match_print(p, type, t, p->tokens[p->token_index].chars, "no match");
+	debug_match_print(p, type, t, p->in.tokens[p->in.index].chars, "no match");
 	return false;
 }
 
 static bool peek(parser *p, unsigned type)
 {
-	return p->tokens[p->token_index].user_type == type;
+	return p->in.tokens[p->in.index].user_type == type;
 }
 
 static int scan_scope(unsigned open, int (*parse_fn)(parser*,unsigned), unsigned close, parser *p)
@@ -400,18 +422,22 @@ static int parse_func_call(parser *p, unsigned end)
 	);
 }
 
-int parse(int max_tokens, const token *tokens, int max_nodes, node *nodes, bool debug_text)
+int parsec(int max_tokens, const token *tokens, int max_nodes, node *nodes, bool debug_text)
 {
 	parser ps;
-	ps.current_token_state = 0;
-	ps.tokens = tokens;
-	ps.token_index = 0;
-	ps.max_tokens = max_tokens;
-	ps.current_node_state = 0;
-	ps.nodes = nodes;
-	ps.node_index = 0;
-	ps.max_nodes = max_nodes;
+	
+	ps.in.current_state = 0;
+	ps.in.tokens = tokens;
+	ps.in.index = 0;
+	ps.in.max_tokens = max_tokens;
+
+	ps.out.current_state = 0;
+	ps.out.nodes = nodes;
+	ps.out.index = 0;
+	ps.out.max_nodes = max_nodes;
+
 	ps.debug_text = debug_text;
+
 	parser *p = &ps;
 	return MANAGE_STATE("parse", parse_program(p, token::STOP_EOF));
 }
