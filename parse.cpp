@@ -2,45 +2,51 @@
 
 #include <iostream>
 
+/// @brief A stream of input tokens to parse.
 struct token_stream
 {
-	const token *tokens;
-	int          index;
-	int          max_tokens;
+	const token *tokens;     // The array of tokens.
+	int          index;      // The current index into the token array.
+	int          max_tokens; // The number of tokens in the token array.
 };
 
+/// @brief Data keeping track of the abstract syntax tree during its construction.
 struct node_tree
 {
-	node *nodes;
-	int   index;
-	int   max_nodes;
+	node *nodes;     // The array of nodes.
+	int   index;     // The current index into the node array.
+	int   max_nodes; // The number of nodes in the node array.
 };
 
+/// @brief The parser which runs through input tokens and produces an output abstract syntax tree.
 struct parser
 {
 	token_stream in;
 	node_tree    out;
 };
 
+/// @brief Parser states is used to keep track of the parser's internal state at the time it attempts to parse a rule. It is handy for rolling back if the rule fails.
+/// @sa new_state
 struct parser_state
 {
-	parser   *p;
-	int       token_index;
-	int       node_index;
-	unsigned  end;
+	parser   *p;           // The up-tp-date parser.
+	int       token_index; // The token index at the time of creation of the state.
+	int       node_index;  // The node index at the time of creation of the state.
+	unsigned  end;         // The current end token (e.g. closing parenthesis or EOF).
+	node     *parent_node; // The parent node for the current scope.
 };
 
-node *new_node(signed *index, parser *p, unsigned type)
+node *new_node(parser *p, unsigned type)
 {
-	*index = p->out.index;
+	if (type == node::NIL) { return NULL; }
 	node *n = p->out.nodes + p->out.index++;
 	n->type = type;
 	return n;
 }
 
-parser_state new_state(parser *p, unsigned end)
+parser_state new_state(parser *p, unsigned end, unsigned node_type)
 {
-	parser_state s = { p, p->in.index, p->out.index, end };
+	parser_state s = { p, p->in.index, p->out.index, end, new_node(p, node_type) };
 	return s;
 }
 
@@ -123,7 +129,7 @@ static int parse_empty(parser_state ps)
 static int parse_program(parser_state ps)	
 {
 	while (match(ps.p, ps.end) == 0) {
-		if (MANAGE_STATE("program", parse_def_func_stmt(new_state(ps.p, ps.end))) == 0) {
+		if (MANAGE_STATE("program", parse_def_func_stmt(new_state(ps.p, ps.end, ))) == 0) {
 			return 0;
 		}
 	}
@@ -232,7 +238,6 @@ static int parse_func_sig(parser_state ps)
 // def_func_stmt ::= func_sig body
 static int parse_def_func_stmt(parser_state ps)
 {
-	//node *n = new_node()
 	return MANAGE_STATE(
 		"def_func_stmt",
 		parse_func_sig(new_state(ps.p, ps.end)) && parse_body(new_state(ps.p, ps.end))
@@ -364,13 +369,13 @@ static int parse_func_call(parser_state ps)
 int parsec(int max_tokens, const token *tokens, int max_nodes, node *nodes)
 {
 	parser p;
-	p.in.tokens = tokens;
-	p.in.index = 0;
+	p.in.tokens     = tokens;
+	p.in.index      = 0;
 	p.in.max_tokens = max_tokens;
-	p.out.nodes = nodes;
-	p.out.index = 0;
+	p.out.nodes     = nodes;
+	p.out.index     = 0;
 	p.out.max_nodes = max_nodes;
 
-	parser_state ps = new_state(&p, token::STOP_EOF);
-	return MANAGE_STATE("c", parse_program(new_state(ps.p, token::STOP_EOF))) <= 0 ? -1 : p.out.index;
+	parser_state ps = new_state(&p, token::STOP_EOF, node::NIL);
+	return MANAGE_STATE("c", parse_program(new_state(ps.p, token::STOP_EOF, node::UNIT))) <= 0 ? -1 : p.out.index;
 }

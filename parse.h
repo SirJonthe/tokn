@@ -24,10 +24,11 @@
 // TODO DOC
 struct node
 {
-	token    tok;  // Information about the token.
-	signed   next; // The next token in line.
-	unsigned type;
+	token     tok;  // Information about the token.
+	node     *next; // The next token in line.
+	unsigned  type;
 	enum {
+		NIL,
 		UNIT, // A translation unit. Every file starts with this and can be treated as a local root node. The root of the AST is also a UNIT type.
 		INSTANCE,
 		OPERATION,
@@ -53,8 +54,8 @@ struct node
 		{
 			unsigned  type;      // Used to determine the resulting type of an operation between mixed types, i.e. always the highest ranking type in this order: schar, uchar, sshort, ushort, sint, uint, slong, ulong, sllong, ullong, float, double. User-defined types not allowed.
 			unsigned  operation; // add, sub, mul etc.
-			signed    left;      // lhs
-			signed    right;     // rhs
+			node     *left;      // lhs
+			node     *right;     // rhs
 		} operation;
 
 		/// @brief Data relating to a mathematical operand.
@@ -66,29 +67,31 @@ struct node
 		/// @brief Data relating to a conditional statement including actions on true and false.
 		struct conditional_data
 		{
-			signed test; // Guaranteed to be an expression node.
-			signed on_true;
-			signed on_false; // This is empty if the condition does not have an else clause.
+			signed  test; // Guaranteed to be an expression node.
+			node   *on_true;
+			node   *on_false; // This is empty if the condition does not have an else clause.
 		} conditional;
 
+		/// @brief Data relating to the definition of a function.
 		struct fn_def
 		{
-			signed out_type;
-			signed in_types;
-			signed body;
+			node *out_type;
+			node *in_types;
+			node *body;
 		};
 
+		/// @brief Data relating to declaration of a function.
 		struct fn_decl
 		{
-			signed out_type;
-			signed in_types;
+			node *out_type;
+			node *in_types;
 		};
 
 		/// @brief Data relating to loops.
 		struct loop_data
 		{
-			unsigned type; // for, while, do-while
-			signed   condition; // Guaranteed to be a conditional node.
+			unsigned  type; // for, while, do-while
+			node     *condition; // Guaranteed to be a conditional node.
 		} loop;
 
 		/// @brief Data relating to some kind of parsing error.
