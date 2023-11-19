@@ -352,18 +352,13 @@ static int parse_func_call(parser_state ps)
 int parsec(int max_tokens, const token *tokens, int max_nodes, node *nodes)
 {
 	parser p;
-	
-	//p.in.current_state = 0;
 	p.in.tokens = tokens;
 	p.in.index = 0;
 	p.in.max_tokens = max_tokens;
-
-	//p.out.current_state = 0;
 	p.out.nodes = nodes;
 	p.out.index = 0;
 	p.out.max_nodes = max_nodes;
 
 	parser_state ps = new_state(&p, token::STOP_EOF);
-
 	return MANAGE_STATE("c", parse_program(new_state(ps.p, token::STOP_EOF))) <= 0 ? -1 : p.out.index;
 }

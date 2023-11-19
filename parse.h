@@ -24,8 +24,9 @@
 // TODO DOC
 struct node
 {
-	token  tok;  // Information about the token.
-	signed next; // The next token in line.
+	token    tok;  // Information about the token.
+	signed   next; // The next token in line.
+	unsigned type;
 	enum {
 		UNIT, // A translation unit. Every file starts with this and can be treated as a local root node. The root of the AST is also a UNIT type.
 		INSTANCE,
@@ -33,7 +34,7 @@ struct node
 		OPERAND
 		//CONDITIONAL,
 		//LOOP
-	} type;
+	};
 
 	union {
 		/// @brief Data relating to a variable/constant instance of a data type.
