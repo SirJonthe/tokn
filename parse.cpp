@@ -1,6 +1,7 @@
 #include "parse.h"
 
-#include <iostream>
+// Local definition of NULL.
+#define NULL 0
 
 /// @brief A stream of input tokens to parse.
 struct token_stream
@@ -31,22 +32,34 @@ struct parser_state
 {
 	parser   *p;           // The up-tp-date parser.
 	int       token_index; // The token index at the time of creation of the state.
+	node     *n;           // The current node for the scope. This is the node we should be writing to within each new state.
 	int       node_index;  // The node index at the time of creation of the state.
 	unsigned  end;         // The current end token (e.g. closing parenthesis or EOF).
-	node     *parent_node; // The parent node for the current scope.
 };
 
-node *new_node(parser *p, unsigned type)
+node *new_node(parser *p, node **n)
 {
-	if (type == node::NIL) { return NULL; }
-	node *n = p->out.nodes + p->out.index++;
-	n->type = type;
-	return n;
+	if (n == NULL) { return NULL; }
+	*n = p->out.nodes + p->out.index++;
+	return *n;
 }
 
-parser_state new_state(parser *p, unsigned end, unsigned node_type)
+void set_node_type(node *n, unsigned type)
 {
-	parser_state s = { p, p->in.index, p->out.index, end, new_node(p, node_type) };
+	if (n != NULL) {
+		n->type = type;
+	}
+}
+
+parser_state new_state(parser *p, unsigned end, node **n = NULL)
+{
+	parser_state s = {
+		p,
+		p->in.index,
+		new_node(p, n),
+		p->out.index,
+		end
+	};
 	return s;
 }
 
@@ -60,6 +73,7 @@ static int manage_state(const char *fn_name, parser_state ps, int success)
 }
 
 #define MANAGE_STATE(fn_name, success) (manage_state(fn_name, ps, success))
+#define REF_NODE(node) (ps.n != NULL ? &node : NULL)
 
 static int parse_empty        (parser_state ps);
 static int parse_program      (parser_state ps);
@@ -126,11 +140,16 @@ static int parse_empty(parser_state ps)
 }
 
 // program ::= def_func_stmt
-static int parse_program(parser_state ps)	
+static int parse_program(parser_state ps)
 {
+	set_node_type(ps.n, node::PROGRAM);
+	node **statements = REF_NODE(ps.n->data.program.statements);
 	while (match(ps.p, ps.end) == 0) {
-		if (MANAGE_STATE("program", parse_def_func_stmt(new_state(ps.p, ps.end, ))) == 0) {
+		if (MANAGE_STATE("program", parse_def_func_stmt(new_state(ps.p, ps.end, statements))) == 0) {
 			return 0;
+		}
+		if (statements != NULL) {
+			statements = &(*statements)->next;
 		}
 	}
 	return 1;
@@ -376,6 +395,7 @@ int parsec(int max_tokens, const token *tokens, int max_nodes, node *nodes)
 	p.out.index     = 0;
 	p.out.max_nodes = max_nodes;
 
-	parser_state ps = new_state(&p, token::STOP_EOF, node::NIL);
-	return MANAGE_STATE("c", parse_program(new_state(ps.p, token::STOP_EOF, node::UNIT))) <= 0 ? -1 : p.out.index;
+	parser_state ps = new_state(&p, token::STOP_EOF, &p.out.nodes);
+	set_node_type(p.out.nodes, node::ROOT);
+	return MANAGE_STATE("c", parse_program(new_state(ps.p, token::STOP_EOF, REF_NODE(ps.n->data.root.program)))) <= 0 ? -1 : p.out.index;
 }
