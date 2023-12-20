@@ -541,11 +541,11 @@ static bool is_white(char c)
 
 static str trim(str s)
 {
-	while (is_white(s.str[0]) && s.len > 0) {
+	while (s.len > 0 && is_white(s.str[0])) {
 		++s.str;
 		--s.len;
 	}
-	while (is_white(s.str[s.len - 1]) && s.len > 0) {
+	while (s.len > 0 && is_white(s.str[s.len - 1])) {
 		--s.len;
 	}
 	return s;
