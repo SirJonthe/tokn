@@ -424,7 +424,7 @@ static signed matchpattern(regex_t *pattern, const char *text, signed textlength
 		}
 		*/
 		(*matchlength)++;
-	} while ((text[0] != '\0') && matchone(*pattern++, *text++) && --textlength > 0);
+	} while ((text[0] != '\0') && matchone(*pattern++, *text++) && --textlength >= 0);
 
 	*matchlength = pre;
 	return 0;
@@ -675,7 +675,7 @@ const token C_TOKENS[C_TOKEN_COUNT] = {
 	new_operator(";",                       1, ctoken::OPERATOR_SEMICOLON),
 	new_alias   ("[a-zA-Z_][a-zA-Z0-9_]*", 22, token::ALIAS),
 	new_literal ("[0-9]+",                  6, ctoken::LITERAL_INT)
-	//new_literal ("0[xX][0-9a-fA-F]+",      17, ctoken::LITERAL_signed) // TODO: The hash in this one will not be correct.
+	//new_literal ("0[xX][0-9a-fA-F]+",      17, ctoken::LITERAL_INT) // TODO: The hash in this one will not be correct.
 };
 
 token clex(lexer *l)
