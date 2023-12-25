@@ -28,6 +28,7 @@ struct token
 	unsigned  hash;
 	tokentype type;
 	unsigned  user_type;
+	unsigned  (*hashfn)(const char*,unsigned);
 };
 
 struct ctoken
@@ -99,10 +100,10 @@ struct lexer
 	// unsigned (*read_buffer)(); // This is triggered if head < 0|| head >= str.len (usually reads from buffer_start+code.len - buffer_start+code.len+max_buffer_size, although may want to only want to slide the buffer window slightly instead of a completely new buffer since the parser may want to walk back and forth in the buffer).
 };
 
-token new_keyword (const char *chars, unsigned char_count, unsigned user_type);
-token new_operator(const char *chars, unsigned char_count, unsigned user_type);
-token new_literal (const char *chars, unsigned char_count, unsigned user_type);
-token new_alias   (const char *chars, unsigned char_count, unsigned user_type);
+token new_keyword (const char *chars, unsigned char_count, unsigned user_type, unsigned (*hashfn)(const char*,unsigned) = nullptr);
+token new_operator(const char *chars, unsigned char_count, unsigned user_type, unsigned (*hashfn)(const char*,unsigned) = nullptr);
+token new_literal (const char *chars, unsigned char_count, unsigned user_type, unsigned (*hashfn)(const char*,unsigned) = nullptr);
+token new_alias   (const char *chars, unsigned char_count, unsigned user_type, unsigned (*hashfn)(const char*,unsigned) = nullptr);
 token new_eof     ( void );
 token new_error   (const char *chars, unsigned char_count);
 

@@ -460,39 +460,43 @@ static unsigned numhash(const char *nums, unsigned len)
 	return h;
 }
 
-static token new_token(const char *chars, unsigned char_count, token::tokentype type, unsigned user_type)
+static token new_token(const char *chars, unsigned char_count, token::tokentype type, unsigned user_type, unsigned (*hashfn)(const char*,unsigned) = nullptr)
 {
 	token t;
 
 	const unsigned size = sizeof(chars) - 1 < char_count ? sizeof(t.chars) - 1 : char_count;
 	for (unsigned i = 0; i < size; ++i)               { t.chars[i] = chars[i]; }
 	for (unsigned i = size; i < sizeof(t.chars); ++i) { t.chars[i] = '\0'; }
-	t.hash = (type == token::LITERAL) ? numhash(chars, char_count) : strhash(chars, char_count);
+	t.hashfn = hashfn;
+	if (hashfn != nullptr) {
+		t.hash = hashfn(chars, char_count);
+	} else {
+		t.hash = (type == token::LITERAL) ? numhash(chars, char_count) : strhash(chars, char_count);
+	}
 	t.type = type;
 	t.user_type = user_type;
 	return t;
 }
 
-token new_keyword(const char *chars, unsigned char_count, unsigned user_type)
+token new_keyword(const char *chars, unsigned char_count, unsigned user_type, unsigned (*hashfn)(const char*,unsigned))
 {
-	return new_token(chars, char_count, token::KEYWORD, user_type);
+	return new_token(chars, char_count, token::KEYWORD, user_type, hashfn);
 }
 
-token new_operator(const char *chars, unsigned char_count, unsigned user_type)
+token new_operator(const char *chars, unsigned char_count, unsigned user_type, unsigned (*hashfn)(const char*,unsigned))
 {
-	return new_token(chars, char_count, token::OPERATOR, user_type);
+	return new_token(chars, char_count, token::OPERATOR, user_type, hashfn);
 }
 
-token new_literal(const char *chars, unsigned char_count, unsigned user_type)
+token new_literal(const char *chars, unsigned char_count, unsigned user_type, unsigned (*hashfn)(const char*,unsigned))
 {
-	// TODO Will not hash hexadecimal correctly.
-	// TODO Will not hash floating-posigned numbers at all since the number is represented by an signedeger.
-	return new_token(chars, char_count, token::LITERAL, user_type);
+	// NOTE: Requires custom hash functions to hash hex and floating-point values correctly.
+	return new_token(chars, char_count, token::LITERAL, user_type, hashfn);
 }
 
-token new_alias(const char *chars, unsigned char_count, unsigned user_type)
+token new_alias(const char *chars, unsigned char_count, unsigned user_type, unsigned (*hashfn)(const char*,unsigned))
 {
-	return new_token(chars, char_count, token::ALIAS, user_type);
+	return new_token(chars, char_count, token::ALIAS, user_type, hashfn);
 }
 
 token new_eof( void )
@@ -577,8 +581,8 @@ static token get_lit(str s, const token *tokens, signed num_tokens)
 {
 	for (signed i = 0; i < num_tokens; ++i) {
 		signed matchlen;
-		if (tokens[i].type == token::LITERAL && re_match(tokens[i].chars, s.str, s.len, &matchlen) == 0) {
-			return new_literal(s.str, s.len, tokens[i].user_type);
+		if (tokens[i].type == token::LITERAL && re_match(tokens[i].chars, s.str, s.len, &matchlen) == 0 && matchlen == s.len) {
+			return new_literal(s.str, s.len, tokens[i].user_type, tokens[i].hashfn);
 		}
 	}
 	return new_error(s.str, s.len);
@@ -588,8 +592,8 @@ static token get_alias(str s, const token *tokens, signed num_tokens)
 {
 	for (signed i = 0; i < num_tokens; ++i) {
 		signed matchlen;
-		if (tokens[i].type == token::ALIAS && re_match(tokens[i].chars, s.str, s.len, &matchlen) == 0) {
-			return new_alias(s.str, s.len, tokens[i].user_type);
+		if (tokens[i].type == token::ALIAS && re_match(tokens[i].chars, s.str, s.len, &matchlen) == 0 && matchlen == s.len) {
+			return new_alias(s.str, s.len, tokens[i].user_type, tokens[i].hashfn);
 		}
 	}
 	return new_error(s.str, s.len);
@@ -675,7 +679,7 @@ const token C_TOKENS[C_TOKEN_COUNT] = {
 	new_operator(";",                       1, ctoken::OPERATOR_SEMICOLON),
 	new_alias   ("[a-zA-Z_][a-zA-Z0-9_]*", 22, token::ALIAS),
 	new_literal ("[0-9]+",                  6, ctoken::LITERAL_INT)
-	//new_literal ("0[xX][0-9a-fA-F]+",      17, ctoken::LITERAL_INT) // TODO: The hash in this one will not be correct.
+	//new_literal ("0[xX][0-9a-fA-F]+",      17, ctoken::LITERAL_INT, hex2u)
 };
 
 token clex(lexer *l)
