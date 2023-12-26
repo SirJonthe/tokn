@@ -490,7 +490,8 @@ token new_operator(const char *chars, unsigned char_count, unsigned user_type, u
 
 token new_literal(const char *chars, unsigned char_count, unsigned user_type, unsigned (*hashfn)(const char*,unsigned))
 {
-	// NOTE: Requires custom hash functions to hash hex and floating-point values correctly.
+	// NOTE: Requires custom hash functions to hash hex and octal (and other bases) correctly.
+	// NOTE: Will not handle floating point numbers correctly as the . will separate the numbers into two parts.
 	return new_token(chars, char_count, token::LITERAL, user_type, hashfn);
 }
 
