@@ -464,7 +464,7 @@ static token new_token(const char *chars, unsigned char_count, token::tokentype 
 {
 	token t;
 
-	const unsigned size = sizeof(chars) - 1 < char_count ? sizeof(t.chars) - 1 : char_count;
+	const unsigned size = sizeof(t.chars) - 1 < char_count ? sizeof(t.chars) - 1 : char_count;
 	for (unsigned i = 0; i < size; ++i)               { t.chars[i] = chars[i]; }
 	for (unsigned i = size; i < sizeof(t.chars); ++i) { t.chars[i] = '\0'; }
 	t.hashfn = hashfn;
@@ -656,13 +656,26 @@ token lex(lexer *l, const token *tokens, signed max_tokens)
 	return classify(read(l), tokens, max_tokens);
 }
 
-const signed C_TOKEN_COUNT = 21;
+static unsigned hex2u(const char *nums, unsigned len)
+{
+	unsigned h = 0;
+	for (unsigned i = 2; i < len; ++i) {
+		if (nums[i] >= '0' && nums[i] <= '9') {
+			h = h  * 16 + nums[i] - '0';
+		} else if (nums[i] >= 'a' && nums[i] <= 'f') {
+			h = h  * 16 + nums[i] - 'a' + 10;
+		} else if (nums[i] >= 'A' && nums[i] <= 'F') {
+			h = h  * 16 + nums[i] - 'A' + 10;
+		}
+	}
+	return h;
+}
+
+const signed C_TOKEN_COUNT = 22;
 const token C_TOKENS[C_TOKEN_COUNT] = {
-	//new_keyword ("char",                    4, ctoken::KEYWORD_TYPE_CHAR),
 	new_keyword ("unsigned",                8, ctoken::KEYWORD_TYPE_UNSIGNED),
 	new_keyword ("signed",                  6, ctoken::KEYWORD_TYPE_SIGNED),
 	new_keyword ("int",                     3, ctoken::KEYWORD_TYPE_INT),
-	new_keyword ("float",                   5, ctoken::KEYWORD_TYPE_FLOAT),
 	new_keyword ("return",                  6, ctoken::KEYWORD_CONTROL_RETURN),
 	new_keyword ("if",                      2, ctoken::KEYWORD_CONTROL_IF),
 	new_keyword ("__asm",                   5, ctoken::KEYWORD_INTRINSIC_ASM),
@@ -679,8 +692,8 @@ const token C_TOKENS[C_TOKEN_COUNT] = {
 	new_operator(",",                       1, ctoken::OPERATOR_COMMA),
 	new_operator(";",                       1, ctoken::OPERATOR_SEMICOLON),
 	new_alias   ("[a-zA-Z_][a-zA-Z0-9_]*", 22, token::ALIAS),
-	new_literal ("[0-9]+",                  6, ctoken::LITERAL_INT)
-	//new_literal ("0[xX][0-9a-fA-F]+",      17, ctoken::LITERAL_INT, hex2u)
+	new_literal ("[0-9]+",                  6, ctoken::LITERAL_INT),
+	new_literal ("0[xX][0-9a-fA-F]+",      17, ctoken::LITERAL_INT, hex2u)
 };
 
 token clex(lexer *l)
