@@ -39,6 +39,7 @@ struct ctoken
 			
 			// NOTE: This order must be preserved due to how C always casts operations with mixed types UP the ladder in the way below.
 			
+			KEYWORD_TYPE_VOID,
 			//KEYWORD_TYPE_CHAR,
 			//KEYWORD_TYPE_UCHAR,
 			KEYWORD_TYPE_SIGNED,

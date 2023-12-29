@@ -673,6 +673,7 @@ static unsigned hex2u(const char *nums, unsigned len)
 
 const signed C_TOKEN_COUNT = 22;
 const token C_TOKENS[C_TOKEN_COUNT] = {
+	new_keyword ("void",                    4, ctoken::KEYWORD_TYPE_VOID),
 	new_keyword ("unsigned",                8, ctoken::KEYWORD_TYPE_UNSIGNED),
 	new_keyword ("signed",                  6, ctoken::KEYWORD_TYPE_SIGNED),
 	new_keyword ("int",                     3, ctoken::KEYWORD_TYPE_INT),
@@ -691,7 +692,7 @@ const token C_TOKENS[C_TOKEN_COUNT] = {
 	new_operator("=",                       1, ctoken::OPERATOR_ASSIGNMENT_SET),
 	new_operator(",",                       1, ctoken::OPERATOR_COMMA),
 	new_operator(";",                       1, ctoken::OPERATOR_SEMICOLON),
-	new_alias   ("[a-zA-Z_][a-zA-Z0-9_]*", 22, token::ALIAS),
+	new_alias   ("[a-zA-Z_][a-zA-Z0-9_]*", 22,  token::ALIAS),
 	new_literal ("[0-9]+",                  6, ctoken::LITERAL_INT),
 	new_literal ("0[xX][0-9a-fA-F]+",      17, ctoken::LITERAL_INT, hex2u)
 };
