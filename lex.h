@@ -96,6 +96,8 @@ struct lexer
 {
 	str    code;
 	signed head;
+	signed col;
+	signed line;
 	// unsigned buffer_start; // The buffer index of the source code buffer (usually a source file).
 	// unsigned max_buffer_size; // The maximum amount of chars to put in code.
 	// unsigned (*read_buffer)(); // This is triggered if head < 0|| head >= str.len (usually reads from buffer_start+code.len - buffer_start+code.len+max_buffer_size, although may want to only want to slide the buffer window slightly instead of a completely new buffer since the parser may want to walk back and forth in the buffer).

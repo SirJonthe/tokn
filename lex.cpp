@@ -544,16 +544,22 @@ static bool is_white(char c)
 	return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\0';
 }
 
-static str trim(str s)
+static void skip_white(lexer *p)
 {
-	while (s.len > 0 && is_white(s.str[0])) {
-		++s.str;
-		--s.len;
+	while (p->head < p->code.len && is_white(p->code.str[p->head])) {
+		switch (p->code.str[p->head]) {
+		case ' ':
+		case '\t':
+			++p->col;
+			break;
+		case '\r':
+		case '\n':
+			p->col = 0;
+			++p->line;
+			break;
+		}
+		++p->head;
 	}
-	while (s.len > 0 && is_white(s.str[s.len - 1])) {
-		--s.len;
-	}
-	return s;
 }
 
 static token match_token(str s, token::tokentype type, const token *tokens, signed num_tokens)
@@ -615,7 +621,7 @@ static token get_eof(str s, const token *tokens, signed num_tokens)
 
 static str read(lexer *p)
 {
-	while (p->head < p->code.len && is_white(p->code.str[p->head])) { ++p->head; }
+	skip_white(p);
 	char c;
 	signed s = p->head;
 	while (p->head < p->code.len) {
@@ -623,10 +629,12 @@ static str read(lexer *p)
 		if (!is_alnum(c)) {
 			if (!is_white(c) && s == p->head) {
 				++p->head;
+				++p->col;
 			}
 			break;
 		}
 		++p->head;
+		++p->col;
 	}
 	return str{ p->code.str + s, p->head - s };
 }
@@ -648,7 +656,7 @@ static token classify(str s, const token *tokens, signed num_tokens)
 
 lexer init_lexer(str code)
 {
-	return lexer{ trim(code), 0 };
+	return lexer{ code, 0, 0, 0 };
 }
 
 token lex(lexer *l, const token *tokens, signed max_tokens)
