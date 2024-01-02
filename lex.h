@@ -1,10 +1,15 @@
 #ifndef LEX_H
 #define LEX_H
 
-struct str
+struct chars
 {
-	const char *str;
-	signed      len;
+	char str[32];
+	struct view
+	{
+		const char *str;
+		unsigned    len;
+		unsigned    page;
+	};
 };
 
 struct token
@@ -24,7 +29,7 @@ struct token
 		TYPEMASK2 = 0xFFF0
 	};
 
-	char      chars[32]; // NOTE: For string literals, just split it up into chunks of 31 characters each.
+	chars     text; // NOTE: For string literals, just split it up into chunks of 31 characters each.
 	unsigned  hash;
 	tokentype type;
 	unsigned  user_type;
@@ -79,9 +84,9 @@ struct ctoken
 			OPERATOR_ENCLOSE_PARENTHESIS = OPERATOR_ENCLOSE | (1<<4),
 				OPERATOR_ENCLOSE_PARENTHESIS_L,
 				OPERATOR_ENCLOSE_PARENTHESIS_R,
-			//OPERATOR_ENCLOSE_BRACKET = OPERATOR_ENCLOSE | (2<<4),
-			//	OPERATOR_ENCLOSE_BRACKET_L,
-			//	OPERATOR_ENCLOSE_BRACKET_R,
+			OPERATOR_ENCLOSE_BRACKET = OPERATOR_ENCLOSE | (2<<4),
+				OPERATOR_ENCLOSE_BRACKET_L,
+				OPERATOR_ENCLOSE_BRACKET_R,
 			OPERATOR_ENCLOSE_BRACE = OPERATOR_ENCLOSE | (3<<4),
 				OPERATOR_ENCLOSE_BRACE_L,
 				OPERATOR_ENCLOSE_BRACE_R,
@@ -95,13 +100,12 @@ struct ctoken
 
 struct lexer
 {
-	str    code;
-	signed head;
-	signed col;
-	signed line;
-	// unsigned buffer_start; // The buffer index of the source code buffer (usually a source file).
-	// unsigned max_buffer_size; // The maximum amount of chars to put in code.
-	// unsigned (*read_buffer)(); // This is triggered if head < 0|| head >= str.len (usually reads from buffer_start+code.len - buffer_start+code.len+max_buffer_size, although may want to only want to slide the buffer window slightly instead of a completely new buffer since the parser may want to walk back and forth in the buffer).
+	chars::view code;
+	unsigned    head;
+	unsigned    col;
+	unsigned    line;
+	unsigned    page;
+	chars::view (*load_page)(unsigned);
 };
 
 token new_keyword (const char *chars, unsigned char_count, unsigned user_type, unsigned (*hashfn)(const char*,unsigned) = nullptr);
@@ -114,7 +118,7 @@ token new_error   (const char *chars, unsigned char_count);
 /// @brief Creates a new lexer from the given code.
 /// @param code The code to load.
 /// @return The newly created lexer.
-lexer init_lexer(str code);
+lexer init_lexer(chars::view code);
 
 /// @brief Generic lexer that tokenizes the next segment of code in the parser.
 /// @param l The lexer/tokenizer;

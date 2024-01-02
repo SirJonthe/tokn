@@ -464,9 +464,9 @@ static token new_token(const char *chars, unsigned char_count, token::tokentype 
 {
 	token t;
 
-	const unsigned size = sizeof(t.chars) - 1 < char_count ? sizeof(t.chars) - 1 : char_count;
-	for (unsigned i = 0; i < size; ++i)               { t.chars[i] = chars[i]; }
-	for (unsigned i = size; i < sizeof(t.chars); ++i) { t.chars[i] = '\0'; }
+	const unsigned size = sizeof(t.text.str) - 1 < char_count ? sizeof(t.text.str) - 1 : char_count;
+	for (unsigned i = 0; i < size; ++i)                  { t.text.str[i] = chars[i]; }
+	for (unsigned i = size; i < sizeof(t.text.str); ++i) { t.text.str[i] = '\0'; }
 	t.hashfn = hashfn;
 	if (hashfn != nullptr) {
 		t.hash = hashfn(chars, char_count);
@@ -510,7 +510,7 @@ token new_error(const char *chars, unsigned char_count)
 	return new_token(chars, char_count, token::STOP, token::STOP_ERR);
 }
 
-static bool scmp(str a, str b)
+static bool scmp(chars::view a, chars::view b)
 {
 	if (a.len != b.len) { return false; }
 	for (signed i = 0; i < a.len; ++i) {
@@ -544,25 +544,30 @@ static bool is_white(char c)
 	return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\0';
 }
 
-static void skip_white(lexer *p)
+static void next_char(lexer *p)
 {
-	while (p->head < p->code.len && is_white(p->code.str[p->head])) {
-		switch (p->code.str[p->head]) {
-		case ' ':
-		case '\t':
-			++p->col;
-			break;
-		case '\r':
-		case '\n':
-			p->col = 0;
-			++p->line;
-			break;
-		}
-		++p->head;
+	++p->col;
+	switch (p->code.str[p->head]) {
+	case '\r':
+	case '\n':
+		p->col = 0;
+		++p->line;
+		break;
+	}
+	++p->head;
+	if (p->head >= p->code.len && p->load_page != NULL) {
+		p->code = p->load_page(++p->page);
 	}
 }
 
-static token match_token(str s, token::tokentype type, const token *tokens, signed num_tokens)
+static void skip_white(lexer *p)
+{
+	while (p->head < p->code.len && is_white(p->code.str[p->head])) {
+		next_char(p);
+	}
+}
+
+static token match_token(chars::view s, token::tokentype type, const token *tokens, signed num_tokens)
 {
 	unsigned h = strhash(s.str, s.len);
 	for (signed i = 0; i < num_tokens; ++i) {
@@ -573,77 +578,77 @@ static token match_token(str s, token::tokentype type, const token *tokens, sign
 	return new_error(s.str, s.len);
 }
 
-static token get_key(str s, const token *tokens, signed num_tokens)
+static token get_key(chars::view s, const token *tokens, signed num_tokens)
 {
 	return match_token(s, token::KEYWORD, tokens, num_tokens);
 }
 
-static token get_op(str s, const token *tokens, signed num_tokens)
+static token get_op(chars::view s, const token *tokens, signed num_tokens)
 {
 	// NOTE: This does exact matches. Look to cc0::lexer::find_operator for longest match. Will require some restructuring.
 	return match_token(s, token::OPERATOR, tokens, num_tokens);
 }
 
-static token get_lit(str s, const token *tokens, signed num_tokens)
+static token get_lit(chars::view s, const token *tokens, signed num_tokens)
 {
 	for (signed i = 0; i < num_tokens; ++i) {
 		signed matchlen;
-		if (tokens[i].type == token::LITERAL && re_match(tokens[i].chars, s.str, s.len, &matchlen) == 0 && matchlen == s.len) {
+		if (tokens[i].type == token::LITERAL && re_match(tokens[i].text.str, s.str, s.len, &matchlen) == 0 && matchlen == s.len) {
 			return new_literal(s.str, s.len, tokens[i].user_type, tokens[i].hashfn);
 		}
 	}
 	return new_error(s.str, s.len);
 }
 
-static token get_alias(str s, const token *tokens, signed num_tokens)
+static token get_alias(chars::view s, const token *tokens, signed num_tokens)
 {
 	for (signed i = 0; i < num_tokens; ++i) {
 		signed matchlen;
-		if (tokens[i].type == token::ALIAS && re_match(tokens[i].chars, s.str, s.len, &matchlen) == 0 && matchlen == s.len) {
+		if (tokens[i].type == token::ALIAS && re_match(tokens[i].text.str, s.str, s.len, &matchlen) == 0 && matchlen == s.len) {
 			return new_alias(s.str, s.len, tokens[i].user_type, tokens[i].hashfn);
 		}
 	}
 	return new_error(s.str, s.len);
 }
 
-static token get_eof(str s, const token *tokens, signed num_tokens)
+static token get_eof(chars::view s, const token *tokens, signed num_tokens)
 {
 	if (s.len > 0) {
 		return new_error(s.str, s.len);
 	}
 	token t;
 	t.hash = strhash(s.str, s.len);
-	t.chars[0] = '\0';
+	t.text.str[0] = '\0';
 	t.type = token::STOP;
 	t.user_type = token::STOP_EOF;
 	return t;
 }
 
-static str read(lexer *p)
+static chars::view read(lexer *p)
 {
 	skip_white(p);
 	char c;
-	signed s = p->head;
-	while (p->head < p->code.len) {
+	unsigned s = p->head;
+	unsigned i = 0;
+	while (i < sizeof(chars::str) - 1 && p->head < p->code.len) {
 		c = p->code.str[p->head];
 		if (!is_alnum(c)) {
 			if (!is_white(c) && s == p->head) {
-				++p->head;
-				++p->col;
+				next_char(p);
 			}
 			break;
 		}
-		++p->head;
-		++p->col;
+		next_char(p);
+		++i;
 	}
-	return str{ p->code.str + s, p->head - s };
+	return chars::view{ p->code.str + s, p->head - s, 0 };
 }
 
-static token classify(str s, const token *tokens, signed num_tokens)
+static token classify(chars::view s, const token *tokens, signed num_tokens)
 {
 	token t;
 	const signed GET_COUNT = 5;
-	token (*get[GET_COUNT])(str,const token*,signed) = { get_eof, get_lit, get_key, get_op, get_alias };
+	token (*get[GET_COUNT])(chars::view,const token*,signed) = { get_eof, get_lit, get_key, get_op, get_alias };
 
 	for (signed i = 0; i < GET_COUNT; ++i) {
 		t = get[i](s, tokens, num_tokens);
@@ -654,9 +659,9 @@ static token classify(str s, const token *tokens, signed num_tokens)
 	return t;
 }
 
-lexer init_lexer(str code)
+lexer init_lexer(chars::view code)
 {
-	return lexer{ code, 0, 0, 0 };
+	return lexer{ code, 0, 0, 0, 0, NULL };
 }
 
 token lex(lexer *l, const token *tokens, signed max_tokens)
@@ -679,7 +684,7 @@ static unsigned hex2u(const char *nums, unsigned len)
 	return h;
 }
 
-const signed C_TOKEN_COUNT = 23;
+const signed C_TOKEN_COUNT = 25;
 const token C_TOKENS[C_TOKEN_COUNT] = {
 	new_keyword ("void",                    4, ctoken::KEYWORD_TYPE_VOID),
 	new_keyword ("unsigned",                8, ctoken::KEYWORD_TYPE_UNSIGNED),
@@ -693,6 +698,8 @@ const token C_TOKENS[C_TOKEN_COUNT] = {
 	new_operator(")",                       1, ctoken::OPERATOR_ENCLOSE_PARENTHESIS_R),
 	new_operator("{",                       1, ctoken::OPERATOR_ENCLOSE_BRACE_L),
 	new_operator("}",                       1, ctoken::OPERATOR_ENCLOSE_BRACE_R),
+	new_operator("[",                       1, ctoken::OPERATOR_ENCLOSE_BRACKET_L),
+	new_operator("]",                       1, ctoken::OPERATOR_ENCLOSE_BRACKET_R),
 	new_operator("+",                       1, ctoken::OPERATOR_ARITHMETIC_ADD),
 	new_operator("-",                       1, ctoken::OPERATOR_ARITHMETIC_SUB),
 	new_operator("*",                       1, ctoken::OPERATOR_ARITHMETIC_MUL),
