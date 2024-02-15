@@ -551,7 +551,7 @@ static void next_char(lexer *p)
 	case '\r':
 	case '\n':
 		p->col = 0;
-		++p->line;
+		++p->row;
 		break;
 	}
 	++p->head;
@@ -624,9 +624,13 @@ static token get_eof(chars::view s, const token *tokens, signed num_tokens)
 	return t;
 }
 
-static chars::view read(lexer *p)
+static chars::view read(lexer *p, unsigned &head, unsigned &row, unsigned &col)
 {
 	skip_white(p);
+	head = p->head;
+	row  = p->row;
+	col  = p->col;
+	
 	char c;
 	unsigned s = p->head;
 	unsigned i = 0;
@@ -644,7 +648,7 @@ static chars::view read(lexer *p)
 	return chars::view{ p->code.str + s, p->head - s, 0 };
 }
 
-static token classify(chars::view s, const token *tokens, signed num_tokens)
+static token classify(chars::view s, const token *tokens, signed num_tokens, unsigned head, unsigned row, unsigned col)
 {
 	token t;
 	const signed GET_COUNT = 5;
@@ -653,6 +657,9 @@ static token classify(chars::view s, const token *tokens, signed num_tokens)
 	for (signed i = 0; i < GET_COUNT; ++i) {
 		t = get[i](s, tokens, num_tokens);
 		if (t.user_type != token::STOP_ERR) {
+			t.head = head;
+			t.row  = row;
+			t.col  = col;
 			break;
 		}
 	}
@@ -666,7 +673,8 @@ lexer init_lexer(chars::view code)
 
 token lex(lexer *l, const token *tokens, signed max_tokens)
 {
-	return classify(read(l), tokens, max_tokens);
+	unsigned head, row, col;
+	return classify(read(l, head, row, col), tokens, max_tokens, head, row, col);
 }
 
 static unsigned hex2u(const char *nums, unsigned len)

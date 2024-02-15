@@ -34,6 +34,7 @@ struct token
 	tokentype type;
 	unsigned  user_type;
 	unsigned  (*hashfn)(const char*,unsigned);
+	unsigned  head, row, col;
 };
 
 struct ctoken
@@ -102,8 +103,8 @@ struct lexer
 {
 	chars::view code;
 	unsigned    head;
+	unsigned    row;
 	unsigned    col;
-	unsigned    line;
 	unsigned    page;
 	chars::view (*load_page)(unsigned);
 };
