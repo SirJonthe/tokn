@@ -1,9 +1,12 @@
 #ifndef LEX_H
 #define LEX_H
 
+/// @brief Short string data representing the largest acceptable token (32 characters). This structure owns its own data.
 struct chars
 {
 	char str[32];
+
+	/// @brief A view into string data. This structure has no ownership of the underlying string data - only references it.
 	struct view
 	{
 		const char *str;
@@ -12,6 +15,7 @@ struct chars
 	};
 };
 
+/// @brief A data structure representing token data that the lexer produces.
 struct token
 {
 	enum tokentype
@@ -29,16 +33,21 @@ struct token
 		TYPEMASK2 = 0xFFF0
 	};
 
-	chars     text; // NOTE: For string literals, just split it up into chunks of 31 characters each.
-	unsigned  hash;
-	tokentype type;
-	unsigned  user_type;
-	unsigned  (*hashfn)(const char*,unsigned);
-	unsigned  head, row, col;
+	chars     text;                            // The token text (hard copy). NOTE: For string literals, just split it up into chunks of 31 characters each.
+	unsigned  hash;                            // A hash of the token string. Numeric literals are hashed into a binary 1:1 representation of the human-readable string.
+	tokentype type;                            // The broad group type of the token.
+	unsigned  user_type;                       // The custom type that this token should have.
+	unsigned  head;                            // The character location in the code of this token.
+	unsigned  row;                             // The row/line location in the code of this token.
+	unsigned  col;                             // The column location in the code of this token.
+	unsigned  index;                           // The sequential token index in the code of this token.
+	unsigned  (*hashfn)(const char*,unsigned); // A custom hash function to use to hash the token string into a hash.
 };
 
+/// @brief Token data specific to the C programming language.
 struct ctoken
 {
+	/// @brief Token types specific to the C programming language.
 	enum tokentype
 	{
 		KEYWORD_TYPE = token::KEYWORD | (1<<8),
@@ -99,22 +108,60 @@ struct ctoken
 	};
 };
 
+/// @brief The lexer data structure which keeps track of the location of the location of the code being read as well as streams new data in when needed.
 struct lexer
 {
-	chars::view code;
-	unsigned    head;
-	unsigned    row;
-	unsigned    col;
-	unsigned    page;
-	chars::view (*load_page)(unsigned);
+	chars::view code;                   // The code to lex. This could be a smaller segment of a larger code blob, which can be streamed in using 'load_page' function.
+	unsigned    head;                   // The index location of the character in the code about to be lexed.
+	unsigned    row;                    // The row/line index in the code that is about to be lexed.
+	unsigned    col;                    // The column index in the code that is about to be lexed.
+	unsigned    index;                  // The sequence index of the token that is about to be lexed.
+	unsigned    page;                   // The current page that is being lexed.
+	token       last;                   // The last token lexed.
+	chars::view (*load_page)(unsigned); // The function to use to stream more code into into the code buffer when 'head' has reached the end of the code.
 };
 
-token new_keyword (const char *chars, unsigned char_count, unsigned user_type, unsigned (*hashfn)(const char*,unsigned) = nullptr);
+/// @brief Creates a new keyword token that can be used as to identify other keywords when lexing code.
+/// @param chars The characters representing the token. Can be a regular expression.
+/// @param char_count The number of characters in the 'chars' string.
+/// @param user_type The custom type of this token.
+/// @param hashfn A custom hash function to use when matching against this token.
+/// @return The resulting token.
+token new_keyword(const char *chars, unsigned char_count, unsigned user_type, unsigned (*hashfn)(const char*,unsigned) = nullptr);
+
+/// @brief Creates a new operator token that can be used as to identify other operators when lexing code.
+/// @param chars The characters representing the token. Can be a regular expression.
+/// @param char_count The number of characters in the 'chars' string.
+/// @param user_type The custom type of this token.
+/// @param hashfn A custom hash function to use when matching against this token.
+/// @return The resulting token.
 token new_operator(const char *chars, unsigned char_count, unsigned user_type, unsigned (*hashfn)(const char*,unsigned) = nullptr);
-token new_literal (const char *chars, unsigned char_count, unsigned user_type, unsigned (*hashfn)(const char*,unsigned) = nullptr);
-token new_alias   (const char *chars, unsigned char_count, unsigned user_type, unsigned (*hashfn)(const char*,unsigned) = nullptr);
-token new_eof     ( void );
-token new_error   (const char *chars, unsigned char_count);
+
+/// @brief Creates a new literal token that can be used as to identify other literals when lexing code.
+/// @param chars The characters representing the token. Should be a regular expression, otherwise a separate literal token must be created for each valid literal (1,2,3,4 etc.).
+/// @param char_count The number of characters in the 'chars' string.
+/// @param user_type The custom type of this token.
+/// @param hashfn A custom hash function to use when matching against this token.
+/// @return The resulting token.
+token new_literal(const char *chars, unsigned char_count, unsigned user_type, unsigned (*hashfn)(const char*,unsigned) = nullptr);
+
+/// @brief Creates a new alias token that can be used as to identify other aliases when lexing code.
+/// @param chars The characters representing the token. Should be a regular expression, otherwise a separate alias token must be created for each valid alias.
+/// @param char_count The number of characters in the 'chars' string.
+/// @param user_type The custom type of this token.
+/// @param hashfn A custom hash function to use when matching against this token.
+/// @return The resulting token.
+token new_alias(const char *chars, unsigned char_count, unsigned user_type, unsigned (*hashfn)(const char*,unsigned) = nullptr);
+
+/// @brief Creates an end of file token. Not really used to set up tokens to match input code against, but rather emitted when EOF is reached in input code. Can also be used when supplying an array of tokens to parse to indicate where to stop parsing.
+/// @return The resulting token.
+token new_eof( void );
+
+/// @brief Creates a new error token. Not really used to set up tokens to match input code against, but rather mainly used to emit errors while lexing.
+/// @param chars The text of the error.
+/// @param char_count The number of characters in 'chars'.
+/// @return The resulting token.
+token new_error(const char *chars, unsigned char_count);
 
 /// @brief Creates a new lexer from the given code.
 /// @param code The code to load.

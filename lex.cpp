@@ -475,6 +475,7 @@ static token new_token(const char *chars, unsigned char_count, token::tokentype 
 	}
 	t.type = type;
 	t.user_type = user_type;
+	t.head = t.row = t.col = t.index = 0;
 	return t;
 }
 
@@ -624,13 +625,14 @@ static token get_eof(chars::view s, const token *tokens, signed num_tokens)
 	return t;
 }
 
-static chars::view read(lexer *p, unsigned &head, unsigned &row, unsigned &col)
+static chars::view read(lexer *p, unsigned &head, unsigned &row, unsigned &col, unsigned &index)
 {
 	skip_white(p);
-	head = p->head;
-	row  = p->row;
-	col  = p->col;
-	
+	head  = p->head;
+	row   = p->row;
+	col   = p->col;
+	index = p->index;
+
 	char c;
 	unsigned s = p->head;
 	unsigned i = 0;
@@ -645,36 +647,40 @@ static chars::view read(lexer *p, unsigned &head, unsigned &row, unsigned &col)
 		next_char(p);
 		++i;
 	}
+	++p->index;
 	return chars::view{ p->code.str + s, p->head - s, 0 };
 }
 
-static token classify(chars::view s, const token *tokens, signed num_tokens, unsigned head, unsigned row, unsigned col)
+static token classify(lexer *p, const token *tokens, signed num_tokens)
 {
 	token t;
+	unsigned head, row, col, index;
+	chars::view s = read(p, head, row, col, index);
 	const signed GET_COUNT = 5;
 	token (*get[GET_COUNT])(chars::view,const token*,signed) = { get_eof, get_lit, get_key, get_op, get_alias };
 
 	for (signed i = 0; i < GET_COUNT; ++i) {
 		t = get[i](s, tokens, num_tokens);
 		if (t.user_type != token::STOP_ERR) {
-			t.head = head;
-			t.row  = row;
-			t.col  = col;
 			break;
 		}
 	}
+	t.head  = head;
+	t.row   = row;
+	t.col   = col;
+	t.index = index;
 	return t;
 }
 
 lexer init_lexer(chars::view code)
 {
-	return lexer{ code, 0, 0, 0, 0, NULL };
+	return lexer{ code, 0, 0, 0, 0, 0, new_error("<no token>", 10), NULL };
 }
 
 token lex(lexer *l, const token *tokens, signed max_tokens)
 {
-	unsigned head, row, col;
-	return classify(read(l, head, row, col), tokens, max_tokens, head, row, col);
+	l->last = classify(l, tokens, max_tokens);
+	return l->last;
 }
 
 static unsigned hex2u(const char *nums, unsigned len)
