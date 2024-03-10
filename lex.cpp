@@ -479,6 +479,19 @@ static token new_token(const char *chars, unsigned char_count, token::tokentype 
 	return t;
 }
 
+chars to_chars(const char *str, unsigned len)
+{
+	chars c;
+	unsigned max = len < sizeof(c.str) - 1 ? len : sizeof(c.str) - 1;
+	for (unsigned i = 0; i < max; ++i) {
+		c.str[i] = str[i];
+	}
+	for (unsigned i = max; i < sizeof(c.str); ++i) {
+		c.str[i];
+	}
+	return c;
+}
+
 token new_keyword(const char *chars, unsigned char_count, unsigned user_type, unsigned (*hashfn)(const char*,unsigned))
 {
 	return new_token(chars, char_count, token::KEYWORD, user_type, hashfn);

@@ -15,6 +15,12 @@ struct chars
 	};
 };
 
+/// @brief Converts a C string into a fixed-length chars structure. Maximum length is 31 characters. Anything bigger will be clipped.
+/// @param str The string.
+/// @param len The length of the string.
+/// @return The chars object.
+chars to_chars(const char *str, unsigned len);
+
 /// @brief A data structure representing token data that the lexer produces.
 struct token
 {
@@ -70,6 +76,7 @@ struct ctoken
 			KEYWORD_CONTROL_RETURN,
 			KEYWORD_CONTROL_IF,
 			KEYWORD_CONTROL_ELSE,
+			KEYWORD_CONTROL_WHILE,
 		KEYWORD_INTRINSIC = token::KEYWORD | (3<<8),
 			KEYWORD_INTRINSIC_ASM,
 
@@ -101,6 +108,7 @@ struct ctoken
 				OPERATOR_ENCLOSE_BRACE_L,
 				OPERATOR_ENCLOSE_BRACE_R,
 		OPERATOR_SEMICOLON = token::OPERATOR | 1,
+		OPERATOR_COLON,
 		OPERATOR_COMMA,
 
 		LITERAL_INT = token::LITERAL | (1<<8),
