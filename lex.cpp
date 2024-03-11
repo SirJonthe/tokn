@@ -487,7 +487,7 @@ chars to_chars(const char *str, unsigned len)
 		c.str[i] = str[i];
 	}
 	for (unsigned i = max; i < sizeof(c.str); ++i) {
-		c.str[i];
+		c.str[i] = 0;
 	}
 	return c;
 }
