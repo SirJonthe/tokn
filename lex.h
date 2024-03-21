@@ -33,6 +33,7 @@ struct token
 		STOP = 6<<12,
 			STOP_ERR,
 			STOP_EOF,
+		COMMENT,
 		
 		TYPEMASK0 = 0xF000,
 		TYPEMASK1 = 0xFF00,
@@ -129,7 +130,7 @@ struct lexer
 	chars::view (*load_page)(unsigned); // The function to use to stream more code into into the code buffer when 'head' has reached the end of the code.
 };
 
-/// @brief Creates a new keyword token that can be used as to identify other keywords when lexing code.
+/// @brief Creates a new keyword token that can be used to identify other keywords when lexing code.
 /// @param chars The characters representing the token. Can be a regular expression.
 /// @param char_count The number of characters in the 'chars' string.
 /// @param user_type The custom type of this token.
@@ -137,7 +138,7 @@ struct lexer
 /// @return The resulting token.
 token new_keyword(const char *chars, unsigned char_count, unsigned user_type, unsigned (*hashfn)(const char*,unsigned) = nullptr);
 
-/// @brief Creates a new operator token that can be used as to identify other operators when lexing code.
+/// @brief Creates a new operator token that can be used to identify other operators when lexing code.
 /// @param chars The characters representing the token. Can be a regular expression.
 /// @param char_count The number of characters in the 'chars' string.
 /// @param user_type The custom type of this token.
@@ -145,7 +146,7 @@ token new_keyword(const char *chars, unsigned char_count, unsigned user_type, un
 /// @return The resulting token.
 token new_operator(const char *chars, unsigned char_count, unsigned user_type, unsigned (*hashfn)(const char*,unsigned) = nullptr);
 
-/// @brief Creates a new literal token that can be used as to identify other literals when lexing code.
+/// @brief Creates a new literal token that can be used to identify other literals when lexing code.
 /// @param chars The characters representing the token. Should be a regular expression, otherwise a separate literal token must be created for each valid literal (1,2,3,4 etc.).
 /// @param char_count The number of characters in the 'chars' string.
 /// @param user_type The custom type of this token.
@@ -153,13 +154,20 @@ token new_operator(const char *chars, unsigned char_count, unsigned user_type, u
 /// @return The resulting token.
 token new_literal(const char *chars, unsigned char_count, unsigned user_type, unsigned (*hashfn)(const char*,unsigned) = nullptr);
 
-/// @brief Creates a new alias token that can be used as to identify other aliases when lexing code.
+/// @brief Creates a new alias token that can be used to identify other aliases when lexing code.
 /// @param chars The characters representing the token. Should be a regular expression, otherwise a separate alias token must be created for each valid alias.
 /// @param char_count The number of characters in the 'chars' string.
 /// @param user_type The custom type of this token.
 /// @param hashfn A custom hash function to use when matching against this token.
 /// @return The resulting token.
 token new_alias(const char *chars, unsigned char_count, unsigned user_type, unsigned (*hashfn)(const char*,unsigned) = nullptr);
+
+/// @brief Creates a new alias token that can be used to identify the start of a comment.
+/// @param chars The characters representing the token.
+/// @param char_count The number of characters in the 'chars' string.
+/// @note Comment tokens or tokens inside the comment are not returned by the lexer.
+/// @return The resulting token.
+token new_comment(const char *chars, unsigned char_count);
 
 /// @brief Creates an end of file token. Not really used to set up tokens to match input code against, but rather emitted when EOF is reached in input code. Can also be used when supplying an array of tokens to parse to indicate where to stop parsing.
 /// @return The resulting token.

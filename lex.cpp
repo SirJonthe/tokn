@@ -514,6 +514,11 @@ token new_alias(const char *chars, unsigned char_count, unsigned user_type, unsi
 	return new_token(chars, char_count, token::ALIAS, user_type, hashfn);
 }
 
+token new_comment(const char *chars, unsigned char_count)
+{
+	return new_token(chars, char_count, token::COMMENT, 0, nullptr);
+}
+
 token new_eof( void )
 {
 	return new_token("", 0, token::STOP, token::STOP_EOF);
@@ -638,6 +643,11 @@ static token get_eof(chars::view s, const token *tokens, signed num_tokens)
 	return t;
 }
 
+static token get_cmt(chars::view s, const token *tokens, signed num_tokens)
+{
+	return match_token(s, token::COMMENT, tokens, num_tokens);
+}
+
 static chars::view read(lexer *p, unsigned &head, unsigned &row, unsigned &col, unsigned &index)
 {
 	skip_white(p);
@@ -669,6 +679,12 @@ static token classify(lexer *p, const token *tokens, signed num_tokens)
 	token t;
 	unsigned head, row, col, index;
 	chars::view s = read(p, head, row, col, index);
+	while (get_cmt(s, tokens, num_tokens).user_type != token::STOP_ERR) {
+		const unsigned start_row = row;
+		do {
+			s = read(p, head, row, col, index);
+		} while (start_row == row && get_eof(s, tokens, num_tokens).user_type != token::STOP_EOF);
+	}
 	const signed GET_COUNT = 5;
 	token (*get[GET_COUNT])(chars::view,const token*,signed) = { get_eof, get_lit, get_key, get_op, get_alias };
 
