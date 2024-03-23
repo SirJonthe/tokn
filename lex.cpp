@@ -648,23 +648,14 @@ static token get_cmt(chars::view s, const token *tokens, signed num_tokens)
 	return match_token(s, token::COMMENT, tokens, num_tokens);
 }
 
-static chars::view read(lexer *p, unsigned &head, unsigned &row, unsigned &col, unsigned &index)
+static chars::view read_until_alnum(lexer *p, unsigned &head, unsigned &row, unsigned &col, unsigned &index)
 {
-	skip_white(p);
-	head  = p->head;
-	row   = p->row;
-	col   = p->col;
-	index = p->index;
-
 	char c;
 	unsigned s = p->head;
 	unsigned i = 0;
 	while (i < sizeof(chars::str) - 1 && p->head < p->code.len) {
 		c = p->code.str[p->head];
-		if (!is_alnum(c)) {
-			if (!is_white(c) && s == p->head) {
-				next_char(p);
-			}
+		if (is_alnum(c) || is_white(c)) {
 			break;
 		}
 		next_char(p);
@@ -674,30 +665,81 @@ static chars::view read(lexer *p, unsigned &head, unsigned &row, unsigned &col, 
 	return chars::view{ p->code.str + s, p->head - s, 0 };
 }
 
+static chars::view read_until_special(lexer *p, unsigned &head, unsigned &row, unsigned &col, unsigned &index)
+{
+	char c;
+	unsigned s = p->head;
+	unsigned i = 0;
+	while (i < sizeof(chars::str) - 1 && p->head < p->code.len) {
+		c = p->code.str[p->head];
+		if (!is_alnum(c)) {
+			break;
+		}
+		next_char(p);
+		++i;
+	}
+	++p->index;
+	return chars::view{ p->code.str + s, p->head - s, 0 };
+}
+
+static unsigned chtype(char ch)
+{
+	return is_alnum(ch) ? 1 : (is_white(ch) ? 0 : 2);
+}
+
+static chars::view read(lexer *p, unsigned &head, unsigned &row, unsigned &col, unsigned &index)
+{
+	skip_white(p);
+	head  = p->head;
+	row   = p->row;
+	col   = p->col;
+	index = p->index;
+	switch (chtype(p->code.str[p->head])) {
+	case 1: return read_until_special(p, head, row, col, index);
+	case 2: return read_until_alnum(p, head, row, col, index);
+	}
+	return chars::view{ p->code.str + p->head, 0, 0 };
+}
+
 static token classify(lexer *p, const token *tokens, signed num_tokens)
 {
 	token t;
 	unsigned head, row, col, index;
 	chars::view s = read(p, head, row, col, index);
-	while (get_cmt(s, tokens, num_tokens).user_type != token::STOP_ERR) {
-		const unsigned start_row = row;
-		do {
-			s = read(p, head, row, col, index);
-		} while (start_row == row && get_eof(s, tokens, num_tokens).user_type != token::STOP_EOF);
-	}
-	const signed GET_COUNT = 5;
-	token (*get[GET_COUNT])(chars::view,const token*,signed) = { get_eof, get_lit, get_key, get_op, get_alias };
 
-	for (signed i = 0; i < GET_COUNT; ++i) {
-		t = get[i](s, tokens, num_tokens);
-		if (t.user_type != token::STOP_ERR) {
-			break;
+	if (s.len > 0 && !is_alnum(s.str[0]) && !is_white(s.str[0])) {
+		while (s.len > 0) {
+			if (get_op(s, tokens, num_tokens).user_type != token::STOP_ERR || get_cmt(s, tokens, num_tokens).user_type != token::STOP_ERR) {
+				break;
+			}
+			--p->col;
+			--p->head;
+			--p->index;
+			--s.len;
+		}
+	} else {
+		const signed GET_COUNT = 4;
+		token (*get[GET_COUNT])(chars::view,const token*,signed) = { get_eof, get_lit, get_key, get_alias };
+
+		for (signed i = 0; i < GET_COUNT; ++i) {
+			t = get[i](s, tokens, num_tokens);
+			if (t.user_type != token::STOP_ERR) {
+				break;
+			}
 		}
 	}
 	t.head  = head;
 	t.row   = row;
 	t.col   = col;
 	t.index = index;
+
+	if (t.type == token::COMMENT) {
+		do {
+			s = read(p, head, row, col, index);
+		} while (t.row == row && get_eof(s, tokens, num_tokens).user_type != token::STOP_EOF);
+		return classify(p, tokens, num_tokens);
+	}
+
 	return t;
 }
 
