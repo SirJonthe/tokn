@@ -604,7 +604,6 @@ static token get_key(chars::view s, const token *tokens, signed num_tokens)
 
 static token get_op(chars::view s, const token *tokens, signed num_tokens)
 {
-	// NOTE: This does exact matches. Look to cc0::lexer::find_operator for longest match. Will require some restructuring.
 	return match_token(s, token::OPERATOR, tokens, num_tokens);
 }
 
@@ -648,7 +647,7 @@ static token get_cmt(chars::view s, const token *tokens, signed num_tokens)
 	return match_token(s, token::COMMENT, tokens, num_tokens);
 }
 
-static chars::view read_until_alnum(lexer *p, unsigned &head, unsigned &row, unsigned &col, unsigned &index)
+static chars::view read_specials(lexer *p, unsigned &head, unsigned &row, unsigned &col, unsigned &index)
 {
 	char c;
 	unsigned s = p->head;
@@ -665,7 +664,7 @@ static chars::view read_until_alnum(lexer *p, unsigned &head, unsigned &row, uns
 	return chars::view{ p->code.str + s, p->head - s, 0 };
 }
 
-static chars::view read_until_special(lexer *p, unsigned &head, unsigned &row, unsigned &col, unsigned &index)
+static chars::view read_alnums(lexer *p, unsigned &head, unsigned &row, unsigned &col, unsigned &index)
 {
 	char c;
 	unsigned s = p->head;
@@ -695,8 +694,8 @@ static chars::view read(lexer *p, unsigned &head, unsigned &row, unsigned &col, 
 	col   = p->col;
 	index = p->index;
 	switch (chtype(p->code.str[p->head])) {
-	case 1: return read_until_special(p, head, row, col, index);
-	case 2: return read_until_alnum(p, head, row, col, index);
+	case 1: return read_alnums(p, head, row, col, index);
+	case 2: return read_specials(p, head, row, col, index);
 	}
 	return chars::view{ p->code.str + p->head, 0, 0 };
 }
@@ -704,22 +703,31 @@ static chars::view read(lexer *p, unsigned &head, unsigned &row, unsigned &col, 
 static token classify(lexer *p, const token *tokens, signed num_tokens)
 {
 	token t;
+	t.user_type = token::STOP_ERR;
 	unsigned head, row, col, index;
 	chars::view s = read(p, head, row, col, index);
 
 	if (s.len > 0 && !is_alnum(s.str[0]) && !is_white(s.str[0])) {
-		while (s.len > 0) {
-			if (get_op(s, tokens, num_tokens).user_type != token::STOP_ERR || get_cmt(s, tokens, num_tokens).user_type != token::STOP_ERR) {
-				break;
+		while (s.len > 0 && t.user_type == token::STOP_ERR) {
+			const signed GET_COUNT = 3;
+			token (*get[GET_COUNT])(chars::view,const token*,signed) = { get_eof, get_op, get_cmt };
+			
+			for (signed i = 0; i < GET_COUNT; ++i) {
+				t = get[i](s, tokens, num_tokens);
+				if (t.user_type != token::STOP_ERR) {
+					break;
+				}
 			}
-			--p->col;
-			--p->head;
-			--p->index;
-			--s.len;
+			if (t.user_type == token::STOP_ERR) {
+				--p->col;
+				--p->head;
+				--p->index;
+				--s.len;
+			}
 		}
 	} else {
-		const signed GET_COUNT = 4;
-		token (*get[GET_COUNT])(chars::view,const token*,signed) = { get_eof, get_lit, get_key, get_alias };
+		const signed GET_COUNT = 5;
+		token (*get[GET_COUNT])(chars::view,const token*,signed) = { get_eof, get_lit, get_key, get_alias, get_cmt };
 
 		for (signed i = 0; i < GET_COUNT; ++i) {
 			t = get[i](s, tokens, num_tokens);

@@ -26,6 +26,7 @@ struct token
 {
 	enum tokentype
 	{
+		NONE = 0,
 		KEYWORD = 1<<12,
 		ALIAS = 2<<12,
 		OPERATOR = 3<<12,
