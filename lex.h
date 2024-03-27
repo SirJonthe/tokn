@@ -122,10 +122,10 @@ struct ctoken
 struct lexer
 {
 	enum {
-		MODE_DEFAULT,
-		MODE_STRING,
-		MODE_SINGLE,
-		MODE_COMMENT
+		MODE_DEFAULT, // The default lexing mode. Break when reaching white space or character type changes from alnum <-> special.
+		MODE_STRING,  // Read everything in a single token, including whitespaces, verbatim. Strings larger than what can be contained in a token are split into multiple tokens.
+		MODE_SINGLE,  // A single character, including white spaces.
+		MODE_COMMENT  // Disregards a complete line.
 	};
 	chars::view code;                   // The code to lex. This could be a smaller segment of a larger code blob, which can be streamed in using 'load_page' function.
 	unsigned    mode;                   // The mode of reading.
