@@ -121,7 +121,14 @@ struct ctoken
 /// @brief The lexer data structure which keeps track of the location of the location of the code being read as well as streams new data in when needed.
 struct lexer
 {
+	enum {
+		MODE_DEFAULT,
+		MODE_STRING,
+		MODE_SINGLE,
+		MODE_COMMENT
+	};
 	chars::view code;                   // The code to lex. This could be a smaller segment of a larger code blob, which can be streamed in using 'load_page' function.
+	unsigned    mode;                   // The mode of reading.
 	unsigned    head;                   // The index location of the character in the code about to be lexed.
 	unsigned    row;                    // The row/line index in the code that is about to be lexed.
 	unsigned    col;                    // The column index in the code that is about to be lexed.

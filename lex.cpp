@@ -753,7 +753,7 @@ static token classify(lexer *p, const token *tokens, signed num_tokens)
 
 lexer init_lexer(chars::view code)
 {
-	return lexer{ code, 0, 0, 0, 0, 0, new_error("<no token>", 10), NULL };
+	return lexer{ code, lexer::MODE_DEFAULT, 0, 0, 0, 0, 0, new_error("<no token>", 10), NULL };
 }
 
 token lex(lexer *l, const token *tokens, signed max_tokens)
