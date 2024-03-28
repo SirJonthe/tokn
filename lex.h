@@ -34,7 +34,8 @@ struct token
 		STOP = 6<<12,
 			STOP_ERR,
 			STOP_EOF,
-		COMMENT,
+		COMMENT = 7<<12,
+		CHAR = 8<<12,
 		
 		TYPEMASK0 = 0xF000,
 		TYPEMASK1 = 0xFF00,
@@ -121,14 +122,7 @@ struct ctoken
 /// @brief The lexer data structure which keeps track of the location of the location of the code being read as well as streams new data in when needed.
 struct lexer
 {
-	enum {
-		MODE_DEFAULT, // The default lexing mode. Break when reaching white space or character type changes from alnum <-> special.
-		MODE_STRING,  // Read everything in a single token, including whitespaces, verbatim. Strings larger than what can be contained in a token are split into multiple tokens.
-		MODE_SINGLE,  // A single character, including white spaces.
-		MODE_COMMENT  // Disregards a complete line.
-	};
 	chars::view code;                   // The code to lex. This could be a smaller segment of a larger code blob, which can be streamed in using 'load_page' function.
-	unsigned    mode;                   // The mode of reading.
 	unsigned    head;                   // The index location of the character in the code about to be lexed.
 	unsigned    row;                    // The row/line index in the code that is about to be lexed.
 	unsigned    col;                    // The column index in the code that is about to be lexed.
@@ -199,9 +193,11 @@ lexer init_lexer(chars::view code);
 /// @return The token read. The token will contain status to determine if there was an error.
 token lex(lexer *l, const token *tokens, signed num_tokens);
 
-/// @brief C programming language lexer that tokenizes the next segment of code in the parser.
-/// @param l The lexer/tokenizer;
-token clex(lexer *l);
+/// @brief Reads a single character regardless of type, including white spaces.
+/// @param l The lexer/tokenizer.
+/// @return The character consumed. 0 if end of file.
+/// @note Escape characters are respected, so the number of characters read may be greater than one.
+token chlex(lexer *l);
 
 /// @brief Returns the number of tokens remaining in the given lexer.
 /// @param lex_fn Lexer function.
@@ -210,12 +206,5 @@ token clex(lexer *l);
 /// @note EOF counts as one token, so even if the lexer is exhausted, the count should be 1 if there was no error.
 /// @warning This process lexes through the entire remaining code which may be very slow.
 signed count_tokens(token (*lex_fn)(lexer*), lexer l);
-
-/// @brief Returns the number of tokens remaining in the lexer given C language tokens.
-/// @param l The lexer.
-/// @return The number of tokens remaining in the lexer. Negative numbers if there was an error in the lexing.
-/// @note EOF counts as one token, so even if the lexer is exhausted, the count should be 1 if there was no error.
-/// @warning This process lexes through the entire remaining code which may be very slow.
-signed count_ctokens(lexer l);
 
 #endif

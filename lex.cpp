@@ -460,6 +460,16 @@ static unsigned numhash(const char *nums, unsigned len)
 	return h;
 }
 
+static unsigned numhashch(const char *ch, unsigned len)
+{
+	// TODO This must be fixed. Technically only one character is hashed. If there are more than one characters then it is an escape sequence, so we need to deal with those cases.
+	unsigned h = 0;
+	for (unsigned i = 0; i < len; ++i) {
+		h = h + unsigned(ch[i]);
+	}
+	return h;
+}
+
 static token new_token(const char *chars, unsigned char_count, token::tokentype type, unsigned user_type, unsigned (*hashfn)(const char*,unsigned) = nullptr)
 {
 	token t;
@@ -662,6 +672,8 @@ static chars::view read_specials(lexer *p, unsigned &head, unsigned &row, unsign
 	}
 	++p->index;
 	return chars::view{ p->code.str + s, p->head - s, 0 };
+	// TODO: if we are using streaming then this method breaks when a new page loads in...
+	// TODO: Must return a hard copy
 }
 
 static chars::view read_alnums(lexer *p, unsigned &head, unsigned &row, unsigned &col, unsigned &index)
@@ -679,6 +691,8 @@ static chars::view read_alnums(lexer *p, unsigned &head, unsigned &row, unsigned
 	}
 	++p->index;
 	return chars::view{ p->code.str + s, p->head - s, 0 };
+	// TODO: if we are using streaming then this method breaks when a new page loads in...
+	// TODO: Must return a hard copy
 }
 
 static unsigned chtype(char ch)
@@ -753,7 +767,7 @@ static token classify(lexer *p, const token *tokens, signed num_tokens)
 
 lexer init_lexer(chars::view code)
 {
-	return lexer{ code, lexer::MODE_DEFAULT, 0, 0, 0, 0, 0, new_error("<no token>", 10), NULL };
+	return lexer{ code, 0, 0, 0, 0, 0, new_error("<no token>", 10), NULL };
 }
 
 token lex(lexer *l, const token *tokens, signed max_tokens)
@@ -762,53 +776,26 @@ token lex(lexer *l, const token *tokens, signed max_tokens)
 	return l->last;
 }
 
-static unsigned hex2u(const char *nums, unsigned len)
+static chars::view readch(lexer *l)
 {
-	unsigned h = 0;
-	for (unsigned i = 2; i < len; ++i) {
-		if (nums[i] >= '0' && nums[i] <= '9') {
-			h = h  * 16 + nums[i] - '0';
-		} else if (nums[i] >= 'a' && nums[i] <= 'f') {
-			h = h  * 16 + nums[i] - 'a' + 10;
-		} else if (nums[i] >= 'A' && nums[i] <= 'F') {
-			h = h  * 16 + nums[i] - 'A' + 10;
-		}
-	}
-	return h;
+	next_char(l);
+	++l->index;
+	return chars::view{ l->code.str + l->head - 1, 1, 0 };
 }
 
-const signed C_TOKEN_COUNT = 25;
-const token C_TOKENS[C_TOKEN_COUNT] = {
-	new_keyword ("void",                    4, ctoken::KEYWORD_TYPE_VOID),
-	new_keyword ("unsigned",                8, ctoken::KEYWORD_TYPE_UNSIGNED),
-	new_keyword ("signed",                  6, ctoken::KEYWORD_TYPE_SIGNED),
-	new_keyword ("int",                     3, ctoken::KEYWORD_TYPE_INT),
-	new_keyword ("return",                  6, ctoken::KEYWORD_CONTROL_RETURN),
-	new_keyword ("if",                      2, ctoken::KEYWORD_CONTROL_IF),
-	new_keyword ("else",                    4, ctoken::KEYWORD_CONTROL_ELSE),
-	new_keyword ("__asm",                   5, ctoken::KEYWORD_INTRINSIC_ASM),
-	new_operator("(",                       1, ctoken::OPERATOR_ENCLOSE_PARENTHESIS_L),
-	new_operator(")",                       1, ctoken::OPERATOR_ENCLOSE_PARENTHESIS_R),
-	new_operator("{",                       1, ctoken::OPERATOR_ENCLOSE_BRACE_L),
-	new_operator("}",                       1, ctoken::OPERATOR_ENCLOSE_BRACE_R),
-	new_operator("[",                       1, ctoken::OPERATOR_ENCLOSE_BRACKET_L),
-	new_operator("]",                       1, ctoken::OPERATOR_ENCLOSE_BRACKET_R),
-	new_operator("+",                       1, ctoken::OPERATOR_ARITHMETIC_ADD),
-	new_operator("-",                       1, ctoken::OPERATOR_ARITHMETIC_SUB),
-	new_operator("*",                       1, ctoken::OPERATOR_ARITHMETIC_MUL),
-	new_operator("/",                       1, ctoken::OPERATOR_ARITHMETIC_DIV),
-	new_operator("%",                       1, ctoken::OPERATOR_ARITHMETIC_MOD),
-	new_operator("=",                       1, ctoken::OPERATOR_ASSIGNMENT_SET),
-	new_operator(",",                       1, ctoken::OPERATOR_COMMA),
-	new_operator(";",                       1, ctoken::OPERATOR_SEMICOLON),
-	new_alias   ("[a-zA-Z_][a-zA-Z0-9_]*", 22,  token::ALIAS),
-	new_literal ("[0-9]+",                  6, ctoken::LITERAL_INT),
-	new_literal ("0[xX][0-9a-fA-F]+",      17, ctoken::LITERAL_INT, hex2u)
-};
-
-token clex(lexer *l)
+token chlex(lexer *l)
 {
-	return lex(l, C_TOKENS, C_TOKEN_COUNT);
+	l->last.head      = l->head;
+	l->last.row       = l->row;
+	l->last.col       = l->col;
+	l->last.index     = l->index;
+	chars::view s     = readch(l);
+	l->last.text      = to_chars(s.str, s.len);
+	l->last.hashfn    = numhashch;
+	l->last.hash      = l->last.hashfn(s.str, s.len);
+	l->last.type      = token::CHAR;
+	l->last.user_type = token::CHAR;
+	return l->last;
 }
 
 signed count_tokens(token (*lex_fn)(lexer*), lexer l)
@@ -819,9 +806,4 @@ signed count_tokens(token (*lex_fn)(lexer*), lexer l)
 		++count;
 	}
 	return t.user_type == token::STOP_EOF ? count : -1;
-}
-
-signed count_ctokens(lexer l)
-{
-	return count_tokens(clex, l);
 }
