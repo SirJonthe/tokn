@@ -714,12 +714,10 @@ static chars::view read(lexer *p, unsigned &head, unsigned &row, unsigned &col, 
 	return chars::view{ p->code.str + p->head, 0, 0 };
 }
 
-static token classify(lexer *p, const token *tokens, signed num_tokens)
+static token classify(lexer *p, const token *tokens, signed num_tokens, chars::view s, unsigned head, unsigned row, unsigned col, unsigned index)
 {
 	token t;
 	t.user_type = token::STOP_ERR;
-	unsigned head, row, col, index;
-	chars::view s = read(p, head, row, col, index);
 
 	if (s.len > 0 && !is_alnum(s.str[0]) && !is_white(s.str[0])) {
 		while (s.len > 0 && t.user_type == token::STOP_ERR) {
@@ -756,13 +754,21 @@ static token classify(lexer *p, const token *tokens, signed num_tokens)
 	t.index = index;
 
 	if (t.type == token::COMMENT) {
+		token eof;
 		do {
 			s = read(p, head, row, col, index);
-		} while (t.row == row && get_eof(s, tokens, num_tokens).user_type != token::STOP_EOF);
-		return classify(p, tokens, num_tokens);
+		} while (t.row == row && (eof = get_eof(s, tokens, num_tokens)).user_type == token::STOP_ERR);
+		return eof.user_type == token::STOP_ERR ? classify(p, tokens, num_tokens, s, head, row, col, index) : eof;
 	}
 
 	return t;
+}
+
+static token classify(lexer *p, const token *tokens, signed num_tokens)
+{
+	unsigned head, row, col, index;
+	chars::view s = read(p, head, row, col, index);
+	return classify(p, tokens, num_tokens, s, head, row, col, index);
 }
 
 lexer init_lexer(chars::view code)
