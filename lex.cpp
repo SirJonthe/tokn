@@ -762,9 +762,9 @@ static token classify(lexer *p, const token *tokens, signed num_tokens, chars::v
 			s = read(p, head, row, col, index);
 			eof = get_eof(s, tokens, num_tokens);
 		} while (t.row == row && eof.user_type == token::STOP_ERR);
-		eof.head = head;
-		eof.row = row;
-		eof.col = col;
+		eof.head  = head;
+		eof.row   = row;
+		eof.col   = col;
 		eof.index = index;
 		return eof.user_type == token::STOP_ERR ? classify(p, tokens, num_tokens, s, head, row, col, index) : eof;
 	}
