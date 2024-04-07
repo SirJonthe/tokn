@@ -646,9 +646,12 @@ static token get_eof(chars::view s, const token *tokens, signed num_tokens)
 	}
 	token t;
 	t.hash = strhash(s.str, s.len);
-	t.text.str[0] = '\0';
+	for (int i = 0; i < sizeof(chars::str); ++i) {
+		t.text.str[i] = '\0';
+	}
 	t.type = token::STOP;
 	t.user_type = token::STOP_EOF;
+	t.index = t.row = t.col = t.head = 0;
 	return t;
 }
 
@@ -757,7 +760,12 @@ static token classify(lexer *p, const token *tokens, signed num_tokens, chars::v
 		token eof;
 		do {
 			s = read(p, head, row, col, index);
-		} while (t.row == row && (eof = get_eof(s, tokens, num_tokens)).user_type == token::STOP_ERR);
+			eof = get_eof(s, tokens, num_tokens);
+		} while (t.row == row && eof.user_type == token::STOP_ERR);
+		eof.head = head;
+		eof.row = row;
+		eof.col = col;
+		eof.index = index;
 		return eof.user_type == token::STOP_ERR ? classify(p, tokens, num_tokens, s, head, row, col, index) : eof;
 	}
 
