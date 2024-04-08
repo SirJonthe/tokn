@@ -470,7 +470,7 @@ static unsigned numhashch(const char *ch, unsigned len)
 	return h;
 }
 
-static token new_token(const char *chars, unsigned char_count, token::tokentype type, unsigned user_type, unsigned (*hashfn)(const char*,unsigned) = nullptr)
+token new_token(const char *chars, unsigned char_count, token::tokentype type, unsigned user_type, unsigned (*hashfn)(const char*,unsigned))
 {
 	token t;
 

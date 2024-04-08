@@ -132,6 +132,15 @@ struct lexer
 	chars::view (*load_page)(unsigned); // The function to use to stream more code into into the code buffer when 'head' has reached the end of the code.
 };
 
+/// @brief Creates a new token with the given parameters.
+/// @param chars The text of the token.
+/// @param char_count The number of characters in the input text.
+/// @param type The type of the token.
+/// @param user_type The user type of the token.
+/// @param hashfn The hash function to use (defaults to built-in).
+/// @return The new token.
+token new_token(const char *chars, unsigned char_count, token::tokentype type, unsigned user_type, unsigned (*hashfn)(const char*,unsigned) = nullptr);
+
 /// @brief Creates a new keyword token that can be used to identify other keywords when lexing code.
 /// @param chars The characters representing the token. Can be a regular expression.
 /// @param char_count The number of characters in the 'chars' string.
