@@ -710,9 +710,11 @@ static chars::view read(lexer *p, unsigned &head, unsigned &row, unsigned &col, 
 	row   = p->row;
 	col   = p->col;
 	index = p->index;
-	switch (chtype(p->code.str[p->head])) {
-	case 1: return read_alnums(p, head, row, col, index);
-	case 2: return read_specials(p, head, row, col, index);
+	if (p->head < p->code.len) {
+		switch (chtype(p->code.str[p->head])) {
+		case 1: return read_alnums(p, head, row, col, index);
+		case 2: return read_specials(p, head, row, col, index);
+		}
 	}
 	return chars::view{ p->code.str + p->head, 0, 0 };
 }
