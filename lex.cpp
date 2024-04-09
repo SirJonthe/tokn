@@ -575,17 +575,19 @@ static bool is_white(char c)
 
 static void next_char(lexer *p)
 {
-	++p->col;
-	switch (p->code.str[p->head]) {
-	case '\r':
-	case '\n':
-		p->col = 0;
-		++p->row;
-		break;
-	}
-	++p->head;
-	if (p->head >= p->code.len && p->load_page != NULL) {
-		p->code = p->load_page(++p->page);
+	if (p->head < p->code.len) {
+		++p->col;
+		switch (p->code.str[p->head]) {
+		case '\r':
+		case '\n':
+			p->col = 0;
+			++p->row;
+			break;
+		}
+		++p->head;
+		if (p->head >= p->code.len && p->load_page != NULL) {
+			p->code = p->load_page(++p->page);
+		}
 	}
 }
 
@@ -794,6 +796,9 @@ token lex(lexer *l, const token *tokens, signed max_tokens)
 
 static chars::view readch(lexer *l)
 {
+	if (l->head >= l->code.len) {
+		return chars::view{ l->code.str + l->head, 0, 0 };
+	}
 	next_char(l);
 	++l->index;
 	return chars::view{ l->code.str + l->head - 1, 1, 0 };
@@ -809,8 +814,8 @@ token chlex(lexer *l)
 	l->last.text      = to_chars(s.str, s.len);
 	l->last.hashfn    = numhashch;
 	l->last.hash      = l->last.hashfn(s.str, s.len);
-	l->last.type      = token::CHAR;
-	l->last.user_type = token::CHAR;
+	l->last.type      = s.len > 0 ? token::CHAR : token::STOP;
+	l->last.user_type = s.len > 0 ? token::CHAR : token::STOP_EOF;
 	return l->last;
 }
 
