@@ -15,6 +15,26 @@ struct chars
 	};
 };
 
+/// @brief Determines if character is numeric.
+/// @param c The character.
+/// @return True if numeric.
+bool is_num(char c);
+
+/// @brief Determines if character is alphabetical.
+/// @param c The character.
+/// @return True if alphabetical.
+bool is_alpha(char c);
+
+/// @brief Determines if character is alphanumeric.
+/// @param c The character.
+/// @return True if alphanumeric.
+bool is_alnum(char c);
+
+/// @brief Determines if character is white space.
+/// @param c The character.
+/// @return True if white space.
+bool is_white(char c);
+
 /// @brief Converts a C string into a fixed-length chars structure. Maximum length is 31 characters. Anything bigger will be clipped.
 /// @param str The string.
 /// @param len The length of the string.

@@ -470,6 +470,44 @@ static unsigned numhashch(const char *ch, unsigned len)
 	return h;
 }
 
+bool is_num(char c)
+{
+	return (c >= '0' && c <= '9');
+}
+
+bool is_alpha(char c)
+{
+	return
+		(c >= 'a' && c <= 'z') ||
+		(c >= 'A' && c <= 'Z') ||
+		c == '_';
+}
+
+bool is_alnum(char c)
+{
+	return
+		is_num(c) ||
+		is_alpha(c);
+}
+
+bool is_white(char c)
+{
+	return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\0';
+}
+
+chars to_chars(const char *str, unsigned len)
+{
+	chars c;
+	unsigned max = len < sizeof(c.str) - 1 ? len : sizeof(c.str) - 1;
+	for (unsigned i = 0; i < max; ++i) {
+		c.str[i] = str[i];
+	}
+	for (unsigned i = max; i < sizeof(c.str); ++i) {
+		c.str[i] = 0;
+	}
+	return c;
+}
+
 token new_token(const char *chars, unsigned char_count, token::tokentype type, unsigned user_type, unsigned (*hashfn)(const char*,unsigned))
 {
 	token t;
@@ -487,19 +525,6 @@ token new_token(const char *chars, unsigned char_count, token::tokentype type, u
 	t.user_type = user_type;
 	t.head = t.row = t.col = t.index = 0;
 	return t;
-}
-
-chars to_chars(const char *str, unsigned len)
-{
-	chars c;
-	unsigned max = len < sizeof(c.str) - 1 ? len : sizeof(c.str) - 1;
-	for (unsigned i = 0; i < max; ++i) {
-		c.str[i] = str[i];
-	}
-	for (unsigned i = max; i < sizeof(c.str); ++i) {
-		c.str[i] = 0;
-	}
-	return c;
 }
 
 token new_keyword(const char *chars, unsigned char_count, unsigned user_type, unsigned (*hashfn)(const char*,unsigned))
@@ -546,31 +571,6 @@ static bool scmp(chars::view a, chars::view b)
 		if (a.str[i] != b.str[i]) { return false; }
 	}
 	return true;
-}
-
-static bool is_num(char c)
-{
-	return (c >= '0' && c <= '9');
-}
-
-static bool is_alpha(char c)
-{
-	return
-		(c >= 'a' && c <= 'z') ||
-		(c >= 'A' && c <= 'Z') ||
-		c == '_';
-}
-
-static bool is_alnum(char c)
-{
-	return
-		is_num(c) ||
-		is_alpha(c);
-}
-
-static bool is_white(char c)
-{
-	return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\0';
 }
 
 static void next_char(lexer *p)
