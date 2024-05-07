@@ -788,9 +788,9 @@ lexer init_lexer(chars::view code)
 	return lexer{ code, 0, 0, 0, 0, 0, new_error("<no token>", 10), NULL };
 }
 
-token lex(lexer *l, const token *tokens, signed max_tokens)
+token lex(lexer *l, const token *tokens, signed num_tokens)
 {
-	l->last = classify(l, tokens, max_tokens);
+	l->last = classify(l, tokens, num_tokens);
 	return l->last;
 }
 
