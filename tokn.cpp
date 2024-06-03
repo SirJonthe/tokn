@@ -1,4 +1,4 @@
-#include "lex.h"
+#include "tokn.h"
 
 /* tiny-regex-c
  * https://github.com/kokke/tiny-regex-c
@@ -470,12 +470,12 @@ static unsigned numhashch(const char *ch, unsigned len)
 	return h;
 }
 
-bool is_num(char c)
+bool cc0::tokn::is_num(char c)
 {
 	return (c >= '0' && c <= '9');
 }
 
-bool is_alpha(char c)
+bool cc0::tokn::is_alpha(char c)
 {
 	return
 		(c >= 'a' && c <= 'z') ||
@@ -483,21 +483,21 @@ bool is_alpha(char c)
 		c == '_';
 }
 
-bool is_alnum(char c)
+bool cc0::tokn::is_alnum(char c)
 {
 	return
-		is_num(c) ||
-		is_alpha(c);
+		cc0::tokn::is_num(c) ||
+		cc0::tokn::is_alpha(c);
 }
 
-bool is_white(char c)
+bool cc0::tokn::is_white(char c)
 {
 	return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\0';
 }
 
-chars to_chars(const char *str, unsigned len)
+cc0::tokn::chars cc0::tokn::to_chars(const char *str, unsigned len)
 {
-	chars c;
+	cc0::tokn::chars c;
 	unsigned max = len < sizeof(c.str) - 1 ? len : sizeof(c.str) - 1;
 	for (unsigned i = 0; i < max; ++i) {
 		c.str[i] = str[i];
@@ -508,7 +508,7 @@ chars to_chars(const char *str, unsigned len)
 	return c;
 }
 
-token new_token(const char *chars, unsigned char_count, token::tokentype type, unsigned user_type, unsigned (*hashfn)(const char*,unsigned))
+cc0::tokn::token cc0::tokn::new_token(const char *chars, unsigned char_count, cc0::tokn::token::tokentype type, unsigned user_type, unsigned (*hashfn)(const char*,unsigned))
 {
 	token t;
 
@@ -527,44 +527,44 @@ token new_token(const char *chars, unsigned char_count, token::tokentype type, u
 	return t;
 }
 
-token new_keyword(const char *chars, unsigned char_count, unsigned user_type, unsigned (*hashfn)(const char*,unsigned))
+cc0::tokn::token cc0::tokn::new_keyword(const char *chars, unsigned char_count, unsigned user_type, unsigned (*hashfn)(const char*,unsigned))
 {
-	return new_token(chars, char_count, token::KEYWORD, user_type, hashfn);
+	return cc0::tokn::new_token(chars, char_count, cc0::tokn::token::KEYWORD, user_type, hashfn);
 }
 
-token new_operator(const char *chars, unsigned char_count, unsigned user_type, unsigned (*hashfn)(const char*,unsigned))
+cc0::tokn::token cc0::tokn::new_operator(const char *chars, unsigned char_count, unsigned user_type, unsigned (*hashfn)(const char*,unsigned))
 {
-	return new_token(chars, char_count, token::OPERATOR, user_type, hashfn);
+	return cc0::tokn::new_token(chars, char_count, cc0::tokn::token::OPERATOR, user_type, hashfn);
 }
 
-token new_literal(const char *chars, unsigned char_count, unsigned user_type, unsigned (*hashfn)(const char*,unsigned))
+cc0::tokn::token cc0::tokn::new_literal(const char *chars, unsigned char_count, unsigned user_type, unsigned (*hashfn)(const char*,unsigned))
 {
 	// NOTE: Requires custom hash functions to hash hex and octal (and other bases) correctly.
 	// NOTE: Will not handle floating point numbers correctly as the . will separate the numbers into two parts.
-	return new_token(chars, char_count, token::LITERAL, user_type, hashfn);
+	return cc0::tokn::new_token(chars, char_count, cc0::tokn::token::LITERAL, user_type, hashfn);
 }
 
-token new_alias(const char *chars, unsigned char_count, unsigned user_type, unsigned (*hashfn)(const char*,unsigned))
+cc0::tokn::token cc0::tokn::new_alias(const char *chars, unsigned char_count, unsigned user_type, unsigned (*hashfn)(const char*,unsigned))
 {
-	return new_token(chars, char_count, token::ALIAS, user_type, hashfn);
+	return cc0::tokn::new_token(chars, char_count, cc0::tokn::token::ALIAS, user_type, hashfn);
 }
 
-token new_comment(const char *chars, unsigned char_count)
+cc0::tokn::token cc0::tokn::new_comment(const char *chars, unsigned char_count)
 {
-	return new_token(chars, char_count, token::COMMENT, 0, nullptr);
+	return cc0::tokn::new_token(chars, char_count, cc0::tokn::token::COMMENT, 0, nullptr);
 }
 
-token new_eof( void )
+cc0::tokn::token cc0::tokn::new_eof( void )
 {
-	return new_token("", 0, token::STOP, token::STOP_EOF);
+	return cc0::tokn::new_token("", 0, cc0::tokn::token::STOP, cc0::tokn::token::STOP_EOF);
 }
 
-token new_error(const char *chars, unsigned char_count)
+cc0::tokn::token cc0::tokn::new_error(const char *chars, unsigned char_count)
 {
-	return new_token(chars, char_count, token::STOP, token::STOP_ERR);
+	return cc0::tokn::new_token(chars, char_count, token::STOP, token::STOP_ERR);
 }
 
-static bool scmp(chars::view a, chars::view b)
+static bool scmp(cc0::tokn::chars::view a, cc0::tokn::chars::view b)
 {
 	if (a.len != b.len) { return false; }
 	for (signed i = 0; i < a.len; ++i) {
@@ -573,7 +573,7 @@ static bool scmp(chars::view a, chars::view b)
 	return true;
 }
 
-static void next_char(lexer *p)
+static void next_char(cc0::tokn::lexer *p)
 {
 	if (p->head < p->code.len) {
 		++p->col;
@@ -591,14 +591,14 @@ static void next_char(lexer *p)
 	}
 }
 
-static void skip_white(lexer *p)
+static void skip_white(cc0::tokn::lexer *p)
 {
-	while (p->head < p->code.len && is_white(p->code.str[p->head])) {
+	while (p->head < p->code.len && cc0::tokn::is_white(p->code.str[p->head])) {
 		next_char(p);
 	}
 }
 
-static token match_token(chars::view s, token::tokentype type, const token *tokens, signed num_tokens)
+static cc0::tokn::token match_token(cc0::tokn::chars::view s, cc0::tokn::token::tokentype type, const cc0::tokn::token *tokens, signed num_tokens)
 {
 	unsigned h = strhash(s.str, s.len);
 	for (signed i = 0; i < num_tokens; ++i) {
@@ -606,106 +606,106 @@ static token match_token(chars::view s, token::tokentype type, const token *toke
 			return tokens[i];
 		}
 	}
-	return new_error(s.str, s.len);
+	return cc0::tokn::new_error(s.str, s.len);
 }
 
-static token get_key(chars::view s, const token *tokens, signed num_tokens)
+static cc0::tokn::token get_key(cc0::tokn::chars::view s, const cc0::tokn::token *tokens, signed num_tokens)
 {
-	return match_token(s, token::KEYWORD, tokens, num_tokens);
+	return match_token(s, cc0::tokn::token::KEYWORD, tokens, num_tokens);
 }
 
-static token get_op(chars::view s, const token *tokens, signed num_tokens)
+static cc0::tokn::token get_op(cc0::tokn::chars::view s, const cc0::tokn::token *tokens, signed num_tokens)
 {
-	return match_token(s, token::OPERATOR, tokens, num_tokens);
+	return match_token(s, cc0::tokn::token::OPERATOR, tokens, num_tokens);
 }
 
-static token get_lit(chars::view s, const token *tokens, signed num_tokens)
-{
-	for (signed i = 0; i < num_tokens; ++i) {
-		signed matchlen;
-		if (tokens[i].type == token::LITERAL && re_match(tokens[i].text.str, s.str, s.len, &matchlen) == 0 && matchlen == s.len) {
-			return new_literal(s.str, s.len, tokens[i].user_type, tokens[i].hashfn);
-		}
-	}
-	return new_error(s.str, s.len);
-}
-
-static token get_alias(chars::view s, const token *tokens, signed num_tokens)
+static cc0::tokn::token get_lit(cc0::tokn::chars::view s, const cc0::tokn::token *tokens, signed num_tokens)
 {
 	for (signed i = 0; i < num_tokens; ++i) {
 		signed matchlen;
-		if (tokens[i].type == token::ALIAS && re_match(tokens[i].text.str, s.str, s.len, &matchlen) == 0 && matchlen == s.len) {
-			return new_alias(s.str, s.len, tokens[i].user_type, tokens[i].hashfn);
+		if (tokens[i].type == cc0::tokn::token::LITERAL && re_match(tokens[i].text.str, s.str, s.len, &matchlen) == 0 && matchlen == s.len) {
+			return cc0::tokn::new_literal(s.str, s.len, tokens[i].user_type, tokens[i].hashfn);
 		}
 	}
-	return new_error(s.str, s.len);
+	return cc0::tokn::new_error(s.str, s.len);
 }
 
-static token get_eof(chars::view s, const token *tokens, signed num_tokens)
+static cc0::tokn::token get_alias(cc0::tokn::chars::view s, const cc0::tokn::token *tokens, signed num_tokens)
+{
+	for (signed i = 0; i < num_tokens; ++i) {
+		signed matchlen;
+		if (tokens[i].type == cc0::tokn::token::ALIAS && re_match(tokens[i].text.str, s.str, s.len, &matchlen) == 0 && matchlen == s.len) {
+			return cc0::tokn::new_alias(s.str, s.len, tokens[i].user_type, tokens[i].hashfn);
+		}
+	}
+	return cc0::tokn::new_error(s.str, s.len);
+}
+
+static cc0::tokn::token get_eof(cc0::tokn::chars::view s, const cc0::tokn::token *tokens, signed num_tokens)
 {
 	if (s.len > 0) {
-		return new_error(s.str, s.len);
+		return cc0::tokn::new_error(s.str, s.len);
 	}
-	token t;
+	cc0::tokn::token t;
 	t.hash = strhash(s.str, s.len);
-	for (int i = 0; i < sizeof(chars::str); ++i) {
+	for (int i = 0; i < sizeof(cc0::tokn::chars::str); ++i) {
 		t.text.str[i] = '\0';
 	}
-	t.type = token::STOP;
-	t.user_type = token::STOP_EOF;
+	t.type = cc0::tokn::token::STOP;
+	t.user_type = cc0::tokn::token::STOP_EOF;
 	t.index = t.row = t.col = t.head = 0;
 	return t;
 }
 
-static token get_cmt(chars::view s, const token *tokens, signed num_tokens)
+static cc0::tokn::token get_cmt(cc0::tokn::chars::view s, const cc0::tokn::token *tokens, signed num_tokens)
 {
-	return match_token(s, token::COMMENT, tokens, num_tokens);
+	return match_token(s, cc0::tokn::token::COMMENT, tokens, num_tokens);
 }
 
-static chars::view read_specials(lexer *p, unsigned &head, unsigned &row, unsigned &col, unsigned &index)
+static cc0::tokn::chars::view read_specials(cc0::tokn::lexer *p, unsigned &head, unsigned &row, unsigned &col, unsigned &index)
 {
 	char c;
 	unsigned s = p->head;
 	unsigned i = 0;
-	while (i < sizeof(chars::str) - 1 && p->head < p->code.len) {
+	while (i < sizeof(cc0::tokn::chars::str) - 1 && p->head < p->code.len) {
 		c = p->code.str[p->head];
-		if (is_alnum(c) || is_white(c)) {
+		if (cc0::tokn::is_alnum(c) || cc0::tokn::is_white(c)) {
 			break;
 		}
 		next_char(p);
 		++i;
 	}
 	++p->index;
-	return chars::view{ p->code.str + s, p->head - s, 0 };
+	return cc0::tokn::chars::view{ p->code.str + s, p->head - s, 0 };
 	// TODO: if we are using streaming then this method breaks when a new page loads in...
 	// TODO: Must return a hard copy
 }
 
-static chars::view read_alnums(lexer *p, unsigned &head, unsigned &row, unsigned &col, unsigned &index)
+static cc0::tokn::chars::view read_alnums(cc0::tokn::lexer *p, unsigned &head, unsigned &row, unsigned &col, unsigned &index)
 {
 	char c;
 	unsigned s = p->head;
 	unsigned i = 0;
-	while (i < sizeof(chars::str) - 1 && p->head < p->code.len) {
+	while (i < sizeof(cc0::tokn::chars::str) - 1 && p->head < p->code.len) {
 		c = p->code.str[p->head];
-		if (!is_alnum(c)) {
+		if (!cc0::tokn::is_alnum(c)) {
 			break;
 		}
 		next_char(p);
 		++i;
 	}
 	++p->index;
-	return chars::view{ p->code.str + s, p->head - s, 0 };
+	return cc0::tokn::chars::view{ p->code.str + s, p->head - s, 0 };
 	// TODO: if we are using streaming then this method breaks when a new page loads in...
 	// TODO: Must return a hard copy
 }
 
 static unsigned chtype(char ch)
 {
-	return is_alnum(ch) ? 1 : (is_white(ch) ? 0 : 2);
+	return cc0::tokn::is_alnum(ch) ? 1 : (cc0::tokn::is_white(ch) ? 0 : 2);
 }
 
-static chars::view read(lexer *p, unsigned &head, unsigned &row, unsigned &col, unsigned &index)
+static cc0::tokn::chars::view read(cc0::tokn::lexer *p, unsigned &head, unsigned &row, unsigned &col, unsigned &index)
 {
 	skip_white(p);
 	head  = p->head;
@@ -718,26 +718,26 @@ static chars::view read(lexer *p, unsigned &head, unsigned &row, unsigned &col, 
 		case 2: return read_specials(p, head, row, col, index);
 		}
 	}
-	return chars::view{ p->code.str + p->head, 0, 0 };
+	return cc0::tokn::chars::view{ p->code.str + p->head, 0, 0 };
 }
 
-static token classify(lexer *p, const token *tokens, signed num_tokens, chars::view s, unsigned head, unsigned row, unsigned col, unsigned index)
+static cc0::tokn::token classify(cc0::tokn::lexer *p, const cc0::tokn::token *tokens, signed num_tokens, cc0::tokn::chars::view s, unsigned head, unsigned row, unsigned col, unsigned index)
 {
-	token t;
-	t.user_type = token::STOP_ERR;
+	cc0::tokn::token t;
+	t.user_type = cc0::tokn::token::STOP_ERR;
 
-	if (s.len > 0 && !is_alnum(s.str[0]) && !is_white(s.str[0])) {
-		while (s.len > 0 && t.user_type == token::STOP_ERR) {
+	if (s.len > 0 && !cc0::tokn::is_alnum(s.str[0]) && !cc0::tokn::is_white(s.str[0])) {
+		while (s.len > 0 && t.user_type == cc0::tokn::token::STOP_ERR) {
 			const signed GET_COUNT = 3;
-			token (*get[GET_COUNT])(chars::view,const token*,signed) = { get_eof, get_op, get_cmt };
+			cc0::tokn::token (*get[GET_COUNT])(cc0::tokn::chars::view,const cc0::tokn::token*,signed) = { get_eof, get_op, get_cmt };
 			
 			for (signed i = 0; i < GET_COUNT; ++i) {
 				t = get[i](s, tokens, num_tokens);
-				if (t.user_type != token::STOP_ERR) {
+				if (t.user_type != cc0::tokn::token::STOP_ERR) {
 					break;
 				}
 			}
-			if (t.user_type == token::STOP_ERR) {
+			if (t.user_type == cc0::tokn::token::STOP_ERR) {
 				--p->col;
 				--p->head;
 				--p->index;
@@ -746,11 +746,11 @@ static token classify(lexer *p, const token *tokens, signed num_tokens, chars::v
 		}
 	} else {
 		const signed GET_COUNT = 5;
-		token (*get[GET_COUNT])(chars::view,const token*,signed) = { get_eof, get_lit, get_key, get_alias, get_cmt };
+		cc0::tokn::token (*get[GET_COUNT])(cc0::tokn::chars::view,const cc0::tokn::token*,signed) = { get_eof, get_lit, get_key, get_alias, get_cmt };
 
 		for (signed i = 0; i < GET_COUNT; ++i) {
 			t = get[i](s, tokens, num_tokens);
-			if (t.user_type != token::STOP_ERR) {
+			if (t.user_type != cc0::tokn::token::STOP_ERR) {
 				break;
 			}
 		}
@@ -760,51 +760,51 @@ static token classify(lexer *p, const token *tokens, signed num_tokens, chars::v
 	t.col   = col;
 	t.index = index;
 
-	if (t.type == token::COMMENT) {
-		token eof;
+	if (t.type == cc0::tokn::token::COMMENT) {
+		cc0::tokn::token eof;
 		do {
 			s = read(p, head, row, col, index);
 			eof = get_eof(s, tokens, num_tokens);
-		} while (t.row == row && eof.user_type == token::STOP_ERR);
+		} while (t.row == row && eof.user_type == cc0::tokn::token::STOP_ERR);
 		eof.head  = head;
 		eof.row   = row;
 		eof.col   = col;
 		eof.index = index;
-		return eof.user_type == token::STOP_ERR ? classify(p, tokens, num_tokens, s, head, row, col, index) : eof;
+		return eof.user_type == cc0::tokn::token::STOP_ERR ? classify(p, tokens, num_tokens, s, head, row, col, index) : eof;
 	}
 
 	return t;
 }
 
-static token classify(lexer *p, const token *tokens, signed num_tokens)
+static cc0::tokn::token classify(cc0::tokn::lexer *p, const cc0::tokn::token *tokens, signed num_tokens)
 {
 	unsigned head, row, col, index;
-	chars::view s = read(p, head, row, col, index);
+	cc0::tokn::chars::view s = read(p, head, row, col, index);
 	return classify(p, tokens, num_tokens, s, head, row, col, index);
 }
 
-lexer init_lexer(chars::view code)
+cc0::tokn::lexer cc0::tokn::init_lexer(cc0::tokn::chars::view code)
 {
-	return lexer{ code, 0, 0, 0, 0, 0, new_error("<no token>", 10), NULL };
+	return cc0::tokn::lexer{ code, 0, 0, 0, 0, 0, new_error("<no token>", 10), NULL };
 }
 
-token lex(lexer *l, const token *tokens, signed num_tokens)
+cc0::tokn::token cc0::tokn::lex(cc0::tokn::lexer *l, const cc0::tokn::token *tokens, signed num_tokens)
 {
 	l->last = classify(l, tokens, num_tokens);
 	return l->last;
 }
 
-static chars::view readch(lexer *l)
+static cc0::tokn::chars::view readch(cc0::tokn::lexer *l)
 {
 	if (l->head >= l->code.len) {
-		return chars::view{ l->code.str + l->head, 0, 0 };
+		return cc0::tokn::chars::view{ l->code.str + l->head, 0, 0 };
 	}
 	next_char(l);
 	++l->index;
-	return chars::view{ l->code.str + l->head - 1, 1, 0 };
+	return cc0::tokn::chars::view{ l->code.str + l->head - 1, 1, 0 };
 }
 
-token chlex(lexer *l)
+cc0::tokn::token cc0::tokn::chlex(cc0::tokn::lexer *l)
 {
 	l->last.head      = l->head;
 	l->last.row       = l->row;
@@ -819,7 +819,7 @@ token chlex(lexer *l)
 	return l->last;
 }
 
-signed count_tokens(token (*lex_fn)(lexer*), lexer l)
+signed cc0::tokn::count_tokens(cc0::tokn::token (*lex_fn)(cc0::tokn::lexer*), cc0::tokn::lexer l)
 {
 	signed count = 1;
 	token t;
